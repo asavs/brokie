@@ -547,6 +547,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Suggested projection: “Platform free · Bring your own API key · Provider usage may cost extra,” not “free AI inference.”
 - Unknowns: Supported providers, compatibility with free providers, ReportGPT account/card requirements, and document/storage/export/collaboration limits.
 
+### Revdoku
+
+- Decision: Reject removal; retain in publishing, hosting, and agent-compatible deployment collections while excluding from inference/GPU.
+- Capabilities: File/report publishing, microsite hosting, public/password-protected websites, agent-operable deployment, file storage, small hosted database, and basic analytics.
+- Supported producers include ChatGPT, Claude, Codex, and other AI agents; this is compatibility, not model inference.
+- Candidate outcomes: Publish agent output as a website; host a report or microsite; share content publicly or behind a password.
+- Description: “Publishing and hosting service for turning files, reports, and agent output into public or password-protected websites.”
+- Free-tier benefits: 2 GB storage; 2 live sites/apps; 1 database with a nested 25 MB capacity limit; 3 AI connections; basic analytics.
+- Nested limits: 1,000 files per bucket and 100 MB maximum per individual file.
+- Unknowns: Bucket count/size, AI-connection semantics and methods, account/card requirements, traffic/bandwidth, custom domains, and whether password protection is included on the free tier.
+- Modeling consequence: Limits can attach to included resources and to nested units rather than floating at the opportunity level.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
