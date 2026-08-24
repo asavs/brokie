@@ -15,7 +15,7 @@
   <form class="controls" id="search"><input id="q" placeholder="Call an AI model through an API"><select id="need"><option value="">Any need</option></select><button>Find savings</button></form>
   <div class="summary" id="summary">Loading catalog…</div>
   <section class="grid" id="results"></section>
-  <section class="reviews"><div class="eyebrow">Maintainer inbox</div><h2>Pending review</h2><p class="meta">Review mode is a separate, explicitly enabled local surface.</p><p><a href="/review">Open focused review desk →</a></p><div id="reviews"></div></section>
+  <section class="reviews"><div class="eyebrow">Maintainer inbox</div><h2>Pending review</h2><p class="meta">Read-only here. Decisions are recorded with the maintainer CLI so browser access cannot mutate trusted state.</p><div id="reviews"></div></section>
 </main><script>
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function get(url){const response=await fetch(url);if(!response.ok)throw new Error(await response.text());return response.json()}

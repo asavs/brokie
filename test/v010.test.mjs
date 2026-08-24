@@ -64,42 +64,11 @@ try {
   assert.ok(outcomeSearch.count >= 1, "natural outcome words should match controlled need labels");
   const reviews = await fetch(`${base}/v1/reviews?status=open`).then((response) => response.json());
   assert.equal(reviews.count, 0);
-  const disabledReviewWrite = await fetch(`${base}/v1/reviews/example`, { method: "POST", headers: { "content-type": "application/json", "x-brokie-review": "local" }, body: JSON.stringify({ action: "unsure" }) });
-  assert.equal(disabledReviewWrite.status, 403, "review writes must be opt-in");
   const writeAttempt = await fetch(`${base}/v1/opportunities`, { method: "POST" });
   assert.equal(writeAttempt.status, 405);
 } finally {
   await new Promise((resolve) => server.close(resolve));
 }
-
-const reopenState = new DatabaseSync(statePath);
-reopenState.prepare("UPDATE review_queue SET status='open',decision_action='',decided_at=NULL WHERE review_id=?").run(openReviews[0].review_id);
-reopenState.close();
-const reviewServer = createApi({ catalogPath: latest.catalog_db, statePath, reviewWrites: true });
-await new Promise((resolve) => reviewServer.listen(0, "127.0.0.1", resolve));
-const reviewBase = `http://127.0.0.1:${reviewServer.address().port}`;
-try {
-  const reviewPage = await fetch(`${reviewBase}/review`).then((response) => response.text());
-  assert.match(reviewPage, /Make the call/);
-  const missingGuard = await fetch(`${reviewBase}/v1/reviews/${openReviews[0].review_id}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
-  assert.equal(missingGuard.status, 403);
-  const saved = await fetch(`${reviewBase}/v1/reviews/${openReviews[0].review_id}`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-brokie-review": "local" },
-    body: JSON.stringify({ action: "needs_revision", note: "Human fixture feedback", proposed_capabilities: ["model-api"], proposed_needs: ["call-model-api"], card_feedback: { description_rating: "incomplete", description_comment: "Missing quota", requirements_comment: "Verify eligibility", tags_comment: "API tag is grounded" } }),
-  });
-  assert.equal(saved.status, 200);
-} finally {
-  await new Promise((resolve) => reviewServer.close(resolve));
-}
-const feedbackState = new DatabaseSync(statePath, { readOnly: true });
-const savedFeedback = feedbackState.prepare("SELECT status,decision_action,decision_note,proposed_capabilities_json,card_feedback_json FROM review_queue WHERE review_id=?").get(openReviews[0].review_id);
-assert.equal(savedFeedback.status, "deferred");
-assert.equal(savedFeedback.decision_action, "needs_revision");
-assert.equal(savedFeedback.decision_note, "Human fixture feedback");
-assert.deepEqual(JSON.parse(savedFeedback.proposed_capabilities_json), ["model-api"]);
-assert.equal(JSON.parse(savedFeedback.card_feedback_json).description_rating, "incomplete");
-feedbackState.close();
 
 const jobTemp = path.join(root, "test", "tmp", "job");
 fs.rmSync(jobTemp, { recursive: true, force: true });
