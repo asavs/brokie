@@ -419,6 +419,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Free-plan benefits: 100 form responses per month; unlimited forms including AI-created forms; webhooks; embeddable forms.
 - Unknowns: Whether responses are pooled across forms; limits on AI features; account/card requirements; geography; and eligibility.
 
+### Lingo.dev
+
+- Decision: Reject the candidate addition to the current AI inference/GPU slice; retain for broad Brokie under localization/translation.
+- The product performs AI-assisted localization rather than exposing reusable model inference.
+- Capabilities: Software localization, AI-assisted translation, web/mobile localization automation, and localization CLI.
+- Candidate outcome: Localize a web or mobile application.
+- Description: “Open-source CLI for localizing web and mobile applications using either a user-provided LLM or Lingo.dev’s managed localization engine.”
+- BYO-LLM mode: Downloadable open-source CLI; LLM access is user-supplied and external inference cost is unknown; license is unknown.
+- Managed-engine mode: Hosted Lingo.dev engine with 10,000 localization words included per month.
+- Conditional-requirement rule: Bringing an LLM is required only for the BYO mode, not universally across the product.
+- Unknowns: Word-accounting direction, supported languages, managed-engine account/card requirements, project/repository/user limits, and open-source license.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
