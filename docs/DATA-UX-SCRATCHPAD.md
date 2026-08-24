@@ -476,6 +476,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Other unknowns: Hosted/self-hosted delivery, open-source availability, free-plan integration scope, execution/authentication limits, and account/card requirements.
 - Harness consequence: Derive a research job and apply the savings-evidence publication gate.
 
+### ETLR
+
+- Decision: Reject removal; retain under developer automation and agent-compatible infrastructure while excluding from inference/GPU views.
+- Capabilities: Automation scripting, YAML-defined automation, script versioning/deployment, scheduled-task execution, agent-compatible automation, and infrastructure-monitoring automation.
+- Do not infer `agent-platform`, AI observability, model inference, or model API from the listed use cases.
+- Candidate outcomes: Define and deploy automation without a drag-and-drop builder; run scheduled or agent-related tasks; automate infrastructure monitoring.
+- Description: “Platform for defining, versioning, and deploying YAML automation scripts for scheduled tasks, agent workflows, and infrastructure monitoring.”
+- Free-tier benefit: 100 platform credits per month as included usage.
+- Modeling consequence: Proprietary platform credits are usage units, not monetary credits unless the source supplies a currency value.
+- Explicit unknown: Which actions consume credits and at what rate. Account/card requirements and execution limits are also unknown.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
