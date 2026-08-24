@@ -37,10 +37,20 @@ Provider -> Product -> Opportunity
 - **Offer terms:** The structured meaning of “free,” separated from capabilities.
 - **Limit:** A quantity, unit, reset period, duration, and exact evidence. An opportunity can have multiple limits.
 - **Requirement:** Eligibility, credit-card requirement, login, geography, application/approval, startup stage, and other constraints.
-- **Evidence:** Exact source-grounded text supporting a claim, plus derivation method and confidence.
+- **Evidence:** Exact source-grounded text supporting a claim, plus its derivation method.
 - **Relationship:** Alias, duplicate, parent provider, alternative, dependency, stackability, or replacement.
 - **Verification:** Last checked time, method, result, and suspected staleness.
 - **Review decision:** Human conclusion, explanation, desired labels, and unresolved questions.
+
+### Assertions and uncertainty
+
+Each extracted assertion should reference evidence and carry a small, inspectable state:
+
+- `derivation`: `explicit` or `inferred`;
+- `verification_status`: `unverified`, `verified`, `disputed`, or `stale`;
+- `evidence_ids`: one or more supporting source excerpts.
+
+A model-generated confidence score may be retained as optional diagnostic metadata, but it is not required for v0.1 and does not determine trust or promotion unless it is calibrated against reviewed examples.
 
 ### Offer/access terms
 
@@ -121,7 +131,7 @@ Useful filters may include:
 - input/output modality;
 - hosted versus downloadable/open source;
 - verification freshness;
-- confidence/review status.
+- evidence, verification, and review status.
 
 ### Result card hierarchy
 
@@ -273,6 +283,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Offer data: Free token allowance of at least 1,000,000 tokens, resetting monthly.
 - The allowance requires a comparator in the contract: `quantity: 1000000`, `comparator: at_least`, `unit: tokens`, `period: month`.
 - Unknowns: Whether the allowance covers input, output, or combined tokens; model-specific differences; rate limits; account/card requirements; and geography.
+
+### Google AI Studio
+
+- Decision: Accept the candidate trusted classification of hosted model inference.
+- Keep model API access as an inferred, unverified assertion rather than a trusted capability because the supplied text gives request and token rate limits but does not explicitly say API.
+- Candidate outcome: Obtain free model inference.
+- Description: “Environment for running inference with Gemini Flash and Gemma models.”
+- Offer data for Flash: 5 requests per minute; 20 requests per day; 250,000 input tokens per minute.
+- Offer data for Gemma 4: 30 requests per minute; 14,400 requests per day; 16,000 input tokens per minute.
+- Uncertainty: The source does not unambiguously map “Flash” to both named Gemini Flash versions.
+- Other unknowns: Output-token allowance; whether quotas apply to an API, browser environment, or both; account/card requirements; geography; and eligibility.
 
 ## Open design questions
 
