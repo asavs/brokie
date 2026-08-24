@@ -43,6 +43,8 @@ Provider -> Product -> Opportunity
 - **Unknown:** A missing, ambiguous, contradictory, or suspected-stale field, attached to the affected entity and supporting evidence.
 - **Review decision:** Human conclusion, explanation, desired labels, and unresolved questions.
 
+Review resolution eventually needs actions beyond accept/reject/defer, including `merge_entity`, with a canonical target and a requirement to preserve every source record. Until the harness supports it, merge cases remain deferred with the intended resolution recorded in the note.
+
 ### Assertions and uncertainty
 
 Each extracted assertion should reference evidence and carry a small, inspectable state:
@@ -510,6 +512,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Free-tier benefits: Full feature access to built-in APIs; AI coding assistant; 10,000 execution credits per month.
 - “Full access” establishes feature availability, not unlimited usage or absorbed third-party costs.
 - Unknowns: Execution-credit consumption, API/inference charging, team limits, account/card requirements, and runtime/resource limits.
+
+### Maxim / Maxim AI
+
+- Decision status: Defer the raw `Maxim AI` removal until the harness supports a `merge_entity` resolution.
+- Canonical product: **Maxim**; alias: **Maxim AI**; normalize the `www` and non-`www` URLs to one product identity.
+- Preserve both source records as evidence and render one product card.
+- Capabilities: AI/LLM evaluation, AI observability, agent simulation, and prompt playground. Do not infer agent-building capability.
+- Description: “LLM evaluation and observability platform with agent simulation and a prompt playground.”
+- Combined plan evidence: 10,000 logs per month; 3 seats; prompt playground; simulations; evaluations; source-stated free-forever access for indie developers and small teams.
+- Conditional requirement: BYOK applies to simulations and evaluations rather than the whole product.
+- Intended review resolution: `merge_entity`, canonical target `Maxim`, preserve source records `true`.
 
 ## Open design questions
 
