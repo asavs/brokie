@@ -175,6 +175,16 @@ preserve source
 
 Models should propose structured facts; deterministic validation and human-reviewed evidence decide what becomes trusted.
 
+### Entity resolution
+
+Multiple source records may describe the same underlying product or opportunity. Matching records should resolve to one canonical entity while every source statement remains independently attributable as evidence.
+
+- Prefer the product's current public name as the canonical display name.
+- Do not discard a duplicate merely because another record is more complete.
+- Merge compatible claims into the canonical entity, preserving source-level provenance.
+- Keep conflicting, stale-looking, or time-sensitive claims as unverified claims until checked.
+- Queue uncertain merges and contradictions for review rather than silently choosing one record.
+
 ## Reviewed examples
 
 ### Atomic Mail
@@ -219,6 +229,19 @@ Models should propose structured facts; deterministic validation and human-revie
 - Requirement data: Credit card required for verification.
 - Unknowns: Request quantity, broader eligibility, expiry, and geography.
 - UX consequence: Cost and requirements are separate structured blocks, not prose appended to the description or ordinary tag text.
+
+### Google Colab / Colaboratory
+
+- Decision: Resolve the `Google Colab` and `Colaboratory` source records to one canonical product named **Google Colab**; both currently point to the same product URL.
+- Preserve both source descriptions as separate evidence rather than discarding either duplicate.
+- Capabilities: Hosted Python/Jupyter notebook and GPU compute.
+- Candidate outcomes: Run Python notebooks; obtain hosted compute; use GPU-accelerated compute.
+- Offer data: Public free tier.
+- Resource claim: One source explicitly claims access to an Nvidia Tesla K80 GPU. Retain this as an unverified, time-sensitive source claim until checked against a current primary source.
+- Unknowns: Current accelerator models, guaranteed GPU availability, usage quota, session duration, account/card requirements, and geography.
+- Collections: AI notebooks, virtual compute, and GPU compute.
+- Description: “Hosted Python and Jupyter notebook environment with optional accelerated compute.”
+- Pipeline consequence: Duplicate source records become evidence attached to one canonical product, not duplicate opportunity cards.
 
 ## Open design questions
 
