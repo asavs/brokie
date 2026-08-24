@@ -91,6 +91,8 @@ Example: Arize AI has a source-explicit free tier whose benefit is no-cost monit
 
 A product may expose multiple independent savings opportunities. For example, a hosted free tier and an open-source self-hosting option must be separate opportunity records so hosted quotas are not applied to self-hosting and “open source” does not imply free infrastructure.
 
+Eligibility belongs to the individual opportunity rather than the product. One product may simultaneously offer group-specific no-cost access, a generally available trial, and paid access without transferring the eligibility or duration rules between them.
+
 ### Operations and modalities
 
 Generation must not be conflated with transformation or analysis.
@@ -430,6 +432,15 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Managed-engine mode: Hosted Lingo.dev engine with 10,000 localization words included per month.
 - Conditional-requirement rule: Bringing an LLM is required only for the BYO mode, not universally across the product.
 - Unknowns: Word-accounting direction, supported languages, managed-engine account/card requirements, project/repository/user limits, and open-source license.
+
+### Clair
+
+- Decision: Accept removal from the AI inference/GPU slice; retain for a future clinical/healthcare savings collection.
+- Capabilities: Clinical reference search, clinical summarization, medication review, drug-interaction lookup, ICD-10 lookup, and stewardship tools.
+- Description: “Clinical reference suite offering search, summaries, medication review, drug-interaction information, ICD-10 codes, and stewardship tools.”
+- Student opportunity: No-cost access to the professional tool suite; eligibility group is students; verification method and duration are unknown.
+- General opportunity: Trial access to the professional tool suite; duration, credit-card requirement, and eligibility are unknown.
+- Modeling consequence: Keep group-specific no-cost access and a general trial as separate opportunities under the same product.
 
 ## Open design questions
 
