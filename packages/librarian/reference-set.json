@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1-reference-1",
+  "review_scope": "Labels are based only on the supplied catalog text, not current official pages.",
+  "labels": [
+    {"source_id":"src_26ed943e887ba9ce","name":"OpenRouter","include":true,"capabilities":["model-inference","model-routing"],"user_needs":["free-inference","model-routing"],"duplicate_group":null},
+    {"source_id":"src_745f20e45808f4eb","name":"Gonka Broker","include":true,"capabilities":["model-inference","model-api"],"user_needs":["call-model-api","free-inference"],"duplicate_group":null},
+    {"source_id":"src_188f3a77c81741bd","name":"Langfuse","include":true,"capabilities":["observability"],"user_needs":["evaluate-ai"],"duplicate_group":null},
+    {"source_id":"src_1de473cd2f47556c","name":"Kaggle","include":true,"capabilities":["gpu-compute","notebook"],"user_needs":["gpu-accelerator","ai-notebook"],"duplicate_group":null},
+    {"source_id":"src_6e06334f3dc3aaa8","name":"Google AI Studio","include":true,"capabilities":["model-inference"],"user_needs":["free-inference"],"duplicate_group":null},
+    {"source_id":"src_4b2378f7b3331527","name":"Google Colab","include":true,"capabilities":["notebook"],"user_needs":["ai-notebook"],"duplicate_group":null},
+    {"source_id":"src_02b894e1893ae600","name":"AWS Activate","include":true,"capabilities":["cloud-credit"],"user_needs":["cloud-credits"],"duplicate_group":null},
+    {"source_id":"src_4c18993b803f65e2","name":"Dify","include":true,"capabilities":["agent-platform"],"user_needs":["build-agent"],"duplicate_group":null},
+    {"source_id":"src_d79b5978e1aa70a0","name":"Pollinations.AI","include":true,"capabilities":["image-generation","model-api"],"user_needs":["generate-media","call-model-api"],"duplicate_group":null},
+    {"source_id":"src_9badb3c560ec89dc","name":"Lumenfall.ai","include":true,"capabilities":["image-generation","model-inference","model-api","model-routing"],"user_needs":["generate-media","call-model-api","free-inference","model-routing"],"duplicate_group":null},
+    {"source_id":"src_7ecb0da6b8311c7e","name":"Clair","include":false,"capabilities":[],"user_needs":[],"duplicate_group":null},
+    {"source_id":"src_058702d9014f9002","name":"What Is My IP","include":false,"capabilities":[],"user_needs":[],"duplicate_group":null},
+    {"source_id":"src_d77635b60d85d963","name":"11x AI","include":false,"capabilities":[],"user_needs":[],"duplicate_group":null},
+    {"source_id":"src_3e9e80a0199ecc5d","name":"DeepLearning.AI Short Courses","include":false,"capabilities":[],"user_needs":[],"duplicate_group":null},
+    {"source_id":"src_c755ba4a0f6d4bd6","name":"Maxim","include":true,"capabilities":["evaluation","observability","agent-platform"],"user_needs":["evaluate-ai","build-agent"],"duplicate_group":"maxim"},
+    {"source_id":"src_2d319b71d37639e3","name":"Maxim AI","include":true,"capabilities":["evaluation","observability","agent-platform"],"user_needs":["evaluate-ai","build-agent"],"duplicate_group":"maxim"}
+  ]
+}

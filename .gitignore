@@ -1,0 +1,9 @@
+node_modules/
+packages/librarian/generated/
+packages/librarian/pi-agent/auth.json
+packages/librarian/pi-agent/models-store.json
+.env
+.env.*
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
