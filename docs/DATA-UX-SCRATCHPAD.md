@@ -499,6 +499,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Unknowns: Individual qualification, destination types, check-frequency/timeout limits, account/card requirements, commercial use, and duration.
 - “Let AI agents build monitoring” is an operability characteristic, not agent-platform or inference capability.
 
+### lil'bots
+
+- Decision: Reject removal; retain in agent-platform, hosted-automation, and model/tool-API collections.
+- Positive `agent-platform` anchor: The source explicitly says users can build AI agents and the product supplies a hosted scripting/execution environment.
+- Capabilities: Hosted scripting, online code execution, AI-agent development, internal-tool development, built-in model/tool APIs, AI coding assistant, and team sharing.
+- Supported integrations include OpenAI, Anthropic, and Firecrawl; other APIs are unspecified.
+- Candidate outcomes: Build and run an AI agent; create an internal tool; call built-in APIs from a script; share work with a team.
+- Description: “Hosted scripting environment for building AI agents and internal tools with built-in model and web-data APIs.”
+- Free-tier benefits: Full feature access to built-in APIs; AI coding assistant; 10,000 execution credits per month.
+- “Full access” establishes feature availability, not unlimited usage or absorbed third-party costs.
+- Unknowns: Execution-credit consumption, API/inference charging, team limits, account/card requirements, and runtime/resource limits.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
