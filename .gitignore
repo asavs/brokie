@@ -8,3 +8,4 @@ packages/librarian/pi-agent/models-store.json
 *.sqlite-shm
 *.sqlite-wal
 test/tmp/
+var/
