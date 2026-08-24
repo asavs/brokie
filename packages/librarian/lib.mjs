@@ -175,11 +175,18 @@ const MEDIUM_TERMS = [
 
 const EXCLUDED_TERMS = [
   "clinical", "medical", "transcription", "meeting notes", "ad creative", "sales", "seo",
-  "customer support", "recruit", "resume", "logo", "headshot", "copywriting",
+  "customer support", "recruit", "resume", "logo", "headshot", "copywriting", "writing assistant",
 ];
 
+function containsTerm(text, term) {
+  const normalized = term.trim();
+  const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const prefixOnly = normalized === "fine-tun" || normalized === "eval" || normalized === "transcription";
+  return new RegExp(`(?<![a-z0-9])${escaped}${prefixOnly ? "" : "(?![a-z0-9])"}`, "i").test(text);
+}
+
 export function scoreForV001(record) {
-  const haystack = ` ${record.source_category} ${record.source_name} ${record.source_description} ${record.source_offer_detail} `.toLowerCase();
+  const haystack = ` ${record.source_name} ${record.source_description} ${record.source_offer_detail} `.toLowerCase();
   let score = 0;
   const reasons = [];
   if (record.source_category === "Generative AI") {
@@ -199,19 +206,19 @@ export function scoreForV001(record) {
     reasons.push("adjacent cloud or compute category");
   }
   for (const term of STRONG_TERMS) {
-    if (haystack.includes(term)) {
+    if (containsTerm(haystack, term)) {
       score += 3;
       reasons.push(`strong term: ${term}`);
     }
   }
   for (const term of MEDIUM_TERMS) {
-    if (haystack.includes(term)) {
+    if (containsTerm(haystack, term)) {
       score += 1;
       reasons.push(`related term: ${term.trim()}`);
     }
   }
   for (const term of EXCLUDED_TERMS) {
-    if (haystack.includes(term)) {
+    if (containsTerm(haystack, term)) {
       score -= 5;
       reasons.push(`consumer or vertical-specific term: ${term}`);
     }
@@ -238,17 +245,20 @@ export function deterministicAnnotations(record) {
   const add = (list, id, evidence) => {
     if (!list.some((entry) => entry.id === id)) list.push({ id, confidence: 1, derivation: "deterministically_parsed", evidence });
   };
-  const match = (terms) => terms.find((term) => text.includes(term));
+  const match = (terms) => terms.find((term) => containsTerm(text, term));
+  const matches = (pattern) => pattern.test(text);
   let found;
   if (record.source_category === "Cloud Programs") {
     add(capabilities, "cloud-credit", "source category: Cloud Programs");
     add(needs, "cloud-credits", "source category: Cloud Programs");
   }
-  if ((found = match(["inference", "models", "model api", "openai-compatible", "gemini", "deepseek"]))) {
+  if ((found = match(["model inference", "inference", "hosted models", "access to models", "openai-compatible", "gemini", "deepseek"])) || matches(/\b(?:access|call|serve|use)\b.{0,35}\b(?:ai )?models?\b|\bcall\b.{0,30}\bllms?\b/)) {
+    found ||= "source describes access to or calls to models";
     add(capabilities, "model-inference", found);
     add(needs, "free-inference", found);
   }
-  if ((found = match(["api", "requests", "tokens"]))) {
+  if ((found = match(["model api", "inference api", "gemini api", "openai-compatible api", "ai gateway"])) || matches(/\b(?:image|video|audio|text|code) generation\b.{0,60}\bapi\b|\bapi\b.{0,60}\b(?:image|video|audio|text|code) generation\b|\bcall\b.{0,30}\bllms?\b/)) {
+    found ||= "source describes an API that calls or generates with models";
     add(capabilities, "model-api", found);
     add(needs, "call-model-api", found);
   }
@@ -260,7 +270,8 @@ export function deterministicAnnotations(record) {
     add(capabilities, found === "embedding" ? "embeddings" : "vector-search", found);
     add(needs, "embeddings-search", found);
   }
-  if ((found = match(["agent", "assistant"]))) {
+  if ((found = match(["agent platform", "agent framework", "agent builder", "agent workflow", "ai agent apps", "agent simulation"])) || matches(/\b(?:build|building|deploy|develop|create)\b.{0,45}\bai agents?\b|\bai agents?\b.{0,45}\b(?:platform|framework|workflow|apps?)\b/)) {
+    found ||= "source describes building or operating AI agents";
     add(capabilities, "agent-platform", found);
     add(needs, "build-agent", found);
   }
@@ -272,7 +283,7 @@ export function deterministicAnnotations(record) {
     add(capabilities, found === "observability" || found === "traces" ? "observability" : "evaluation", found);
     add(needs, "evaluate-ai", found);
   }
-  if ((found = match(["gpu", "tpu", "accelerator"]))) {
+  if ((found = match(["free gpu", "gpu hours", "gpu compute", "gpu instance", "gpu instances", "gpu notebook", "gpu cloud", "gpu server", "gpu servers", "tpu access", "accelerator compute"]))) {
     add(capabilities, "gpu-compute", found);
     add(needs, "gpu-accelerator", found);
   }
@@ -288,8 +299,14 @@ export function deterministicAnnotations(record) {
     add(capabilities, "cloud-credit", found);
     add(needs, "cloud-credits", found);
   }
-  for (const [term, capability] of [["image", "image-generation"], ["audio", "audio-generation"], ["video", "video-generation"], ["code generation", "code-generation"], ["text generation", "text-generation"]]) {
-    if (text.includes(term)) {
+  for (const [term, capability, pattern] of [
+    ["image generation", "image-generation", /\b(?:image generation|generate images?|text-to-image)\b/],
+    ["audio generation", "audio-generation", /\b(?:audio generation|generate audio|text-to-speech)\b/],
+    ["video generation", "video-generation", /\b(?:video generation|generate videos?|text-to-video)\b/],
+    ["code generation", "code-generation", /\b(?:code generation|generate code)\b/],
+    ["text generation", "text-generation", /\b(?:text generation|generate text)\b/],
+  ]) {
+    if (pattern.test(text)) {
       add(capabilities, capability, term);
       add(needs, "generate-media", term);
     }
