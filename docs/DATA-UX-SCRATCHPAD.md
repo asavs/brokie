@@ -581,6 +581,16 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Benefit: Source-stated no-cost access to the IP lookup service; do not infer unlimited use.
 - Unknowns: Request quotas/rate limits, authentication/account requirements, formats, metadata fields, commercial-use restrictions, geography, retention, and availability guarantees.
 
+### 11x AI startup offer
+
+- Decision: Accept removal from inference/GPU; preserve as a structured opportunity candidate in broad startup-discount staging.
+- The description “AI-powered productivity” is insufficient to establish product capabilities; do not invent specific agent functions.
+- Benefit: 10 percent discount for 1 year, capped at up to USD 5,000 total savings, applying to the source-labeled scope “all AI agents,” whose normalized product scope is unknown.
+- Eligibility: Startups; startup verification required.
+- Explicit unknowns: Covered products/capabilities and canonical provider/product URL. Missing product function gates recommendation and may derive a research job.
+- URL roles: The bags.fm link is an offer/redemption link, not automatically the canonical product URL.
+- Modeling consequence: Preserve separate canonical-product, offer/redemption, application, and source-platform links.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
