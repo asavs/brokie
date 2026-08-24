@@ -524,6 +524,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Conditional requirement: BYOK applies to simulations and evaluations rather than the whole product.
 - Intended review resolution: `merge_entity`, canonical target `Maxim`, preserve source records `true`.
 
+### Reezn.io
+
+- Decision: Reject removal; retain in spec-driven development and agent-context collections while excluding from inference/GPU.
+- Capabilities: Spec-driven development workflow, pre-implementation review, team collaboration, business knowledge graph, and agent context/knowledge infrastructure.
+- Do not infer hosted inference, agent builder/platform, embeddings, or vector search.
+- Candidate outcomes: Review feature specifications before coding; preserve business knowledge; supply organizational context to AI agents.
+- Description: “Spec-driven development workspace that catches problems before coding and builds a business knowledge graph for later AI-agent work.”
+- Free-plan benefits: 3 seats; 1 project; 5 `features` per month.
+- Unit modeling: Preserve source unit `features`; normalized meaning `spec_work_items` is inferred rather than explicit, and must not be confused with included product capabilities.
+- Unknowns: What counts as a feature, knowledge-graph limits, agent integrations/interfaces, account/card requirements, retention, export, and collaboration limits.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
