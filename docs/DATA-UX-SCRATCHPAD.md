@@ -397,6 +397,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Hosted Free-plan benefits: 10,000 spans per month; 7-day retention; 1 project; 2 seats.
 - Requirement: Credit card explicitly not required.
 
+### Zenable
+
+- Decision status: Defer the candidate so the false GPU label can be replaced with broad-catalog governance/tooling capabilities.
+- Remove `gpu-compute`: The old deterministic classifier matched `tpu` inside the word “outputs.”
+- Capabilities: Policy-as-code guardrails, code quality/compliance enforcement, automated output remediation, and automated pull-request review.
+- Interfaces: MCP server and GitHub App.
+- Candidate outcomes: Enforce organizational policies on AI-generated code; automatically fix noncompliant coding-tool output; review pull requests for quality and compliance.
+- Description: “Policy-as-code guardrails that review and automatically fix coding-tool output for quality and compliance.”
+- Free-tier benefits: 100 tool calls per day through the MCP server; 25 automated pull-request reviews per day through the GitHub App.
+- Possible requirements: An MCP-compatible client and a GitHub App connection are inferred from the interfaces but are not explicit requirements in the supplied text.
+- Collection membership: Keep in broad Brokie and a future AI coding/governance view; exclude from inference/GPU.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
