@@ -144,6 +144,18 @@ Proposed visual groups:
 
 Provider and category should be secondary metadata, not the primary navigation system.
 
+### Keep card concerns structurally separate
+
+Do not flatten product function, offer economics, and requirements into one generated description.
+
+- **Description:** What the product/service does, stated without pricing or qualification boilerplate.
+- **Outcome/capability facets:** What the user can accomplish.
+- **Cost/offer block:** Access type, credit/discount/value, quantity, duration, and reset period.
+- **Requirements block:** Credit card, login, approval, eligibility, geography, and other conditions.
+- **Evidence block:** Exact source text supporting each field.
+
+The UI may render concise phrases such as “$5 credit / month” or “Credit card required for verification,” but those phrases must be projections of structured fields rather than authored tag text or facts embedded into the product description.
+
 ## Librarian pipeline hypothesis
 
 ```text
@@ -190,11 +202,23 @@ Models should propose structured facts; deterministic validation and human-revie
 
 ### Audio Enhancer
 
-- Status: Discussion pending.
+- Decision: Keep in Brokie's broad catalog, but exclude from the current AI inference/GPU collection.
 - Old error: Any mention of audio was classified as audio generation.
-- Candidate improvement: Remove audio-generation label.
-- Open question: Keep in the broad catalog under audio processing/enhancement while excluding it from the current inference/GPU view, or omit it until that broader collection exists?
+- Classification: Audio processing/enhancement, not audio generation. Candidate operations include noise removal, echo removal, and vocal enhancement; user outcome is “clean up or improve audio.”
+- Modeling consequence: Global catalog inclusion and collection/view membership must be separate fields.
 - Potential facts: completely free; unlimited enhancements; no login; MP3/WAV/FLAC; noise removal; echo removal; vocal enhancement.
+
+### Brave Search API
+
+- Decision status: Needs taxonomy and UX revision; do not accept either existing tag set unchanged.
+- Keep in broad Brokie and an AI-agent/RAG infrastructure collection; exclude from a narrowly defined inference/GPU view.
+- Capabilities: Web, news, image, and video search API; retrieval/RAG data source. It is not image/video generation, model inference, a model API, or an agent-building platform.
+- Candidate outcomes: Obtain live web context for an agent; call a search API; obtain data for RAG.
+- Description should contain only its function: “Search API for web, news, image, and video results, designed for RAG pipelines and AI-agent context.”
+- Cost data: Usage credit, USD 5, monthly reset.
+- Requirement data: Credit card required for verification.
+- Unknowns: Request quantity, broader eligibility, expiry, and geography.
+- UX consequence: Cost and requirements are separate structured blocks, not prose appended to the description or ordinary tag text.
 
 ## Open design questions
 
