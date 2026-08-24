@@ -602,6 +602,19 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - URL role: bags.fm offer/redemption link; canonical Workspace product URL unknown.
 - Unknowns: Startup definition, eligible configurations, customer/geography restrictions, redemption process, payment requirements, and form of included Gemini access.
 
+### VEO Google startup offer
+
+- Decision: Reject removal; retain in model-API credits, startup offers, and video-generation collections.
+- Capabilities: AI video generation, model API access, and hosted model inference.
+- Candidate outcomes: Generate AI video through an API; obtain credit for Gemini API usage.
+- Description: “AI video generation offering paired with a startup-gated Gemini API credit.”
+- Benefit: One USD 300 monetary credit applying to Gemini API. The separate source phrase “save up to USD 300” is the value of the same benefit and must not be duplicated.
+- Eligibility: Startups; startup verification required.
+- Identity unknown: Preserve source label `VEO Google`, described product `AI video generation`, credit target `Gemini API`, and an unresolved relationship between the described product and credit target.
+- Do not merge with Google AI Studio or the Workspace Plus discount merely because of shared Google/Gemini branding.
+- URL role: bags.fm offer/redemption link; canonical product URL unknown.
+- Unknowns: Expiration, eligible models/services, startup rules, customer/geography restrictions, redemption process, and billing/card requirements.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
