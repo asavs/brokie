@@ -559,6 +559,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Unknowns: Bucket count/size, AI-connection semantics and methods, account/card requirements, traffic/bandwidth, custom domains, and whether password protection is included on the free tier.
 - Modeling consequence: Limits can attach to included resources and to nested units rather than floating at the opportunity level.
 
+### Transcript LOL
+
+- Decision: Accept removal from inference/GPU; retain in broad Brokie under transcription and media processing.
+- Capabilities: Audio/video transcription, transcript summarization and analysis, voice-note recording, and file/URL/messaging/cloud-storage imports.
+- Speech-to-text is transformation; audio/video inputs do not establish audio or video generation, model API access, or reusable inference.
+- Candidate outcomes: Transcribe audio or video; summarize or extract insights from a transcript.
+- Description: “Transcription application that converts audio or video to text and produces summaries and other transcript insights.”
+- Free-tier benefit: 2 transcriptions per day.
+- Requirements: Signup explicitly required; external API key explicitly not required; credit card unknown.
+- Input sources/integrations include uploads, voice notes, YouTube, Instagram, WhatsApp, Telegram, Google Drive, Dropbox, Box, and OneDrive; mobile, desktop, and Chromebook apps are mentioned.
+- Unknowns: Duration/file-size/format limits, summary limits, per-integration quotas, retention, export, languages, and card requirement.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
