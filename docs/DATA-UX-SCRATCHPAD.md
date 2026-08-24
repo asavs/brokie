@@ -1,0 +1,207 @@
+# Brokie data and UX scratchpad
+
+> Living design notes, not a specification. These ideas should evolve as real catalog entries expose missing concepts and bad assumptions.
+
+Last updated: 2026-08-24
+
+## Guiding idea
+
+Brokie should classify resources by the outcome a person wants, while preserving enough structured offer evidence to answer whether the resource is actually useful and free *for that person's situation*.
+
+This is a faceted classification system rather than one rigid hierarchy. The same opportunity may support several outcomes, capabilities, input/output modalities, eligibility groups, and commercial terms.
+
+## Emerging knowledge model
+
+```text
+Provider -> Product -> Opportunity
+                        |- user outcomes
+                        |- capabilities and operations
+                        |- offer/access terms
+                        |- limits and reset periods
+                        |- requirements and eligibility
+                        |- inputs, outputs, and supported formats
+                        |- evidence and provenance
+                        |- freshness and verification
+                        |- relationships and duplicates
+                        `- explicit unknowns and disputes
+```
+
+### Core entities
+
+- **Source record:** Immutable supplied text, source file, line/row, URL, retrieval time, and content hash.
+- **Provider:** Organization responsible for one or more products.
+- **Product:** The underlying service or tool, independent of a particular discount/free offer.
+- **Opportunity:** A public free tier, completely free service, trial, credit, discount, grant, open-source option, or other way to save money.
+- **Capability:** What the product technically does: observability, inference, routing, audio processing, notebook compute, and so on.
+- **User outcome:** The end result the searcher wants: monitor an AI system, clean up audio, run a model, obtain cloud credits.
+- **Offer terms:** The structured meaning of “free,” separated from capabilities.
+- **Limit:** A quantity, unit, reset period, duration, and exact evidence. An opportunity can have multiple limits.
+- **Requirement:** Eligibility, credit-card requirement, login, geography, application/approval, startup stage, and other constraints.
+- **Evidence:** Exact source-grounded text supporting a claim, plus derivation method and confidence.
+- **Relationship:** Alias, duplicate, parent provider, alternative, dependency, stackability, or replacement.
+- **Verification:** Last checked time, method, result, and suspected staleness.
+- **Review decision:** Human conclusion, explanation, desired labels, and unresolved questions.
+
+### Offer/access terms
+
+Candidate access types:
+
+- `completely_free`
+- `free_tier`
+- `free_trial`
+- `usage_credit`
+- `percentage_discount`
+- `fixed_discount`
+- `grant`
+- `open_source`
+- `bring_your_own_provider`
+- `unknown`
+
+Offer terms should support:
+
+- included quantity and unit;
+- reset period, if stated;
+- total duration or expiry;
+- estimated monetary value and currency;
+- unlimited usage as an explicit source-stated claim;
+- login and credit-card requirements;
+- approval and eligibility requirements;
+- geography and stackability;
+- exact evidence for every field;
+- `unknown` rather than silently treating missing restrictions as absent.
+
+Example: Arize AI is `free_tier`, limited to `2 monitored_models`, with period, expiry, card requirement, and eligibility currently unknown.
+
+### Operations and modalities
+
+Generation must not be conflated with transformation or analysis.
+
+Possible operation families:
+
+- generate;
+- transform/enhance;
+- analyze/evaluate;
+- observe/monitor;
+- host/serve;
+- route/broker;
+- store/search/retrieve;
+- automate/orchestrate.
+
+Inputs, outputs, and formats should be separate facets. For example, an audio enhancer may have audio input and output, `noise-removal` and `echo-removal` operations, and MP3/WAV/FLAC formats without having an `audio-generation` capability.
+
+### Catalog membership versus views
+
+“Useful to Brokie eventually” and “belongs in the current AI inference/GPU proof-of-concept view” are separate decisions.
+
+A resource can remain in the broad catalog while being absent from a particular collection or view. Candidate collections include:
+
+- AI inference and model APIs;
+- AI evaluation and agent development;
+- virtual computers, notebooks, and accelerators;
+- media generation and processing;
+- hosting and deployment;
+- startup-gated discounts and credits.
+
+This may be better than globally deleting a valid resource merely because it is outside the first slice.
+
+## Emerging UX model
+
+### Search
+
+The primary entry point is a natural-language outcome: “What are you trying to do?” Search should match user outcomes first, then capabilities and source descriptions.
+
+Useful filters may include:
+
+- type of free access;
+- quantity and reset period;
+- no credit card;
+- no login;
+- eligibility group;
+- geography;
+- input/output modality;
+- hosted versus downloadable/open source;
+- verification freshness;
+- confidence/review status.
+
+### Result card hierarchy
+
+A card should answer, in this order:
+
+1. What can this help me accomplish?
+2. What exactly is free or discounted?
+3. What are the important limits?
+4. Who qualifies and what is required?
+5. What is unknown or unverified?
+6. What source evidence supports this?
+
+Proposed visual groups:
+
+- outcome/capability badges;
+- prominent offer badges such as “Completely free,” “Up to 2 monitored models,” or “$300 API credit”;
+- requirement warnings such as “Startup verification” or “Credit card required”;
+- restrained uncertainty/freshness indicators;
+- expandable original evidence and provenance.
+
+Provider and category should be secondary metadata, not the primary navigation system.
+
+## Librarian pipeline hypothesis
+
+```text
+preserve source
+  -> identify entities
+  -> propose collection membership
+  -> classify outcomes/capabilities/operations
+  -> extract offer terms and limits
+  -> extract requirements and explicit unknowns
+  -> attach evidence to every claim
+  -> propose duplicates/relationships
+  -> validate contradictions and unsupported claims
+  -> human review disagreements
+  -> publish trusted snapshot
+  -> monitor for source and availability changes
+```
+
+Models should propose structured facts; deterministic validation and human-reviewed evidence decide what becomes trusted.
+
+## Reviewed examples
+
+### Atomic Mail
+
+- Decision: Exclude from the current AI inference/GPU slice.
+- Reason: Programmatic email is outside that collection even though it may be useful in a future agent-infrastructure or programmable-email view.
+
+### Arize AI
+
+- Decision: Accept revised classification.
+- Capabilities: AI observability.
+- User outcome: Evaluate or monitor an AI system.
+- Removed: Hosted inference and free-inference outcome. “Free up to two models” refers to monitored models, not models provided for inference.
+- Card content: Existing source-grounded description is good.
+- Offer extraction: Free tier; up to 2 monitored models; period/expiry/card/eligibility unknown.
+
+### Arize AX
+
+- Decision: Needs revision rather than accepting either tag set unchanged.
+- Capabilities: AI evaluation and AI observability.
+- User outcome: Evaluate or monitor an AI system.
+- Removed: Agent-building capability/outcome. Evaluating agents and including a built-in agent do not establish that users can build agents.
+- Suggested description: “Evaluation and observability platform for AI applications and agents. The free product includes 25,000 spans and 1 GB of ingestion per month; the reset period for the span allowance is not stated.”
+- Offer extraction: Free tier; 25,000 spans with period unknown; 1 GB ingestion per month.
+
+### Audio Enhancer
+
+- Status: Discussion pending.
+- Old error: Any mention of audio was classified as audio generation.
+- Candidate improvement: Remove audio-generation label.
+- Open question: Keep in the broad catalog under audio processing/enhancement while excluding it from the current inference/GPU view, or omit it until that broader collection exists?
+- Potential facts: completely free; unlimited enhancements; no login; MP3/WAV/FLAC; noise removal; echo removal; vocal enhancement.
+
+## Open design questions
+
+- How narrow should `agent-platform` be?
+- Which adjacent infrastructure belongs in the first trusted collection?
+- Should vertical AI SaaS discounts enter now or wait for vertical collections?
+- When may product identity/name support a label that the description does not state directly?
+- How should multiple source records merge into one canonical product while preserving offer-specific evidence?
+- Which offer terms deserve prominent card badges versus expandable details?
+- How should claims such as “unlimited” be displayed without independently verifying them?
