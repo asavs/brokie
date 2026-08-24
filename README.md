@@ -51,9 +51,11 @@ The runner refuses to operate without the selected provider's key and never fall
 
 ## Project status
 
-This is intentionally v0.0.1. The immediate roadmap is a read-only search API, refresh/change detection, a persistent review queue, larger evaluations, and unattended Linux execution. Hermes and NemoClaw are candidates for the later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
+The `develop/v0.1.0` line adds a read-only search API, immutable refresh snapshots, material change detection, a persistent review queue, and lock-protected unattended Linux jobs. Hermes and NemoClaw remain candidates for the later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
 
 See [the product brief](docs/PRODUCT_BRIEF.md) and [v0.0.1 experiment report](docs/V0.0.1-EXPERIMENT.md).
+
+For current Linux commands and the eventual service shape, see [WSL development](docs/WSL-DEVELOPMENT.md).
 
 ## Relationship to free-for-dev
 

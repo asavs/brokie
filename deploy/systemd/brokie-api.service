@@ -1,0 +1,21 @@
+[Unit]
+Description=Brokie read-only API
+After=network.target
+
+[Service]
+Type=simple
+User=brokie
+Group=brokie
+WorkingDirectory=/opt/brokie
+EnvironmentFile=/etc/brokie/brokie.env
+ExecStart=/usr/bin/node apps/api/server.mjs --host=127.0.0.1 --port=8787 --catalog=/var/lib/brokie/current/brokie-v0.0.1.sqlite --state=/var/lib/brokie/brokie-state.sqlite
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/var/lib/brokie
+
+[Install]
+WantedBy=multi-user.target

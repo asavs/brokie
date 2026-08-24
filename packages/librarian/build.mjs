@@ -14,12 +14,15 @@ import {
   slug,
 } from "./lib.mjs";
 
-const readmePath = process.argv[2];
-const startupCsvPath = process.argv[3];
-const outputDir = path.join(import.meta.dirname, "generated");
+const cliArgs = process.argv.slice(2);
+const positional = cliArgs.filter((value) => !value.startsWith("--"));
+const outputArg = cliArgs.find((value) => value.startsWith("--output-dir="));
+const readmePath = positional[0];
+const startupCsvPath = positional[1];
+const outputDir = outputArg ? path.resolve(outputArg.slice("--output-dir=".length)) : path.join(import.meta.dirname, "generated");
 const dbPath = path.join(outputDir, "brokie-v0.0.1.sqlite");
 
-if (!readmePath || !startupCsvPath) throw new Error("Usage: node packages/librarian/build.mjs <free-for-dev-readme.md> <startup-offers.csv>");
+if (!readmePath || !startupCsvPath) throw new Error("Usage: node packages/librarian/build.mjs <free-for-dev-readme.md> <startup-offers.csv> [--output-dir=<path>]");
 
 const readmeText = fs.readFileSync(readmePath, "utf8");
 const csvText = fs.readFileSync(startupCsvPath, "utf8");

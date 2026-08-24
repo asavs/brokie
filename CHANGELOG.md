@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Read-only need-first HTTP API over the SQLite catalog.
+- Immutable refresh snapshots with material added/changed/removed detection.
+- Persistent review queue and auditable decisions.
+- Lock-protected unattended refresh runner and Linux service templates.
+- Native WSL verification and synthetic cross-platform integration tests.
+
 ## 0.0.1 — 2026-08-24
 
 First proof-of-concept release.

@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Brokie catalog daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=30m
+Persistent=true
+Unit=brokie-refresh.service
+
+[Install]
+WantedBy=timers.target

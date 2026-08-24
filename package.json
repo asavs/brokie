@@ -1,13 +1,18 @@
 {
   "name": "brokie",
-  "version": "0.0.1",
+  "version": "0.1.0-dev.0",
   "private": true,
   "type": "module",
   "description": "Find free and discounted resources by what you need to accomplish.",
   "scripts": {
     "build:fixture": "node packages/librarian/build.mjs test/fixtures/free-for-dev.md test/fixtures/startup-offers.csv",
     "build:explorer": "node packages/librarian/build-explorer.mjs",
-    "test": "npm run build:fixture && npm run build:explorer && node packages/librarian/test.mjs"
+    "test:v001": "npm run build:fixture && npm run build:explorer && node packages/librarian/test.mjs",
+    "test:v010": "node test/v010.test.mjs",
+    "test": "npm run test:v001 && npm run test:v010",
+    "serve": "node apps/api/server.mjs",
+    "refresh:fixture": "node packages/maintainer/job.mjs test/fixtures/free-for-dev.md test/fixtures/startup-offers.csv",
+    "promote": "node packages/maintainer/promote.mjs"
   },
   "engines": {
     "node": ">=22.5"

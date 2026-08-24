@@ -1,0 +1,15 @@
+[Unit]
+Description=Brokie catalog refresh
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=brokie
+Group=brokie
+WorkingDirectory=/opt/brokie
+EnvironmentFile=/etc/brokie/brokie.env
+ExecStart=/usr/bin/node packages/maintainer/job.mjs ${BROKIE_CATALOG_MARKDOWN} ${BROKIE_STARTUP_CSV} --state-dir=/var/lib/brokie
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/brokie

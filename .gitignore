@@ -7,3 +7,4 @@ packages/librarian/pi-agent/models-store.json
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+test/tmp/
