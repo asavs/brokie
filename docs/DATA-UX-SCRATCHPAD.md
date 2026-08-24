@@ -372,6 +372,20 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Open-source opportunity: Downloadable/self-hostable runtime with CLI, NPM package, and Jupyter kernel interfaces; license is unknown.
 - Collection membership: Keep in broad Brokie and numerical/local-compute views; exclude from collections promising free hosted GPU hardware or hosted notebooks.
 
+### ShipStatic
+
+- Decision status: Defer the candidate so false AI labels can be replaced with broad-catalog hosting/deployment capabilities.
+- Remove `agent-platform`: Being operable by an AI agent is not evidence that the service builds agents.
+- Remove `model-api`: A generic service API is not a model inference API.
+- Capabilities: Static-site hosting, static-site deployment, edge delivery, and agent-compatible automation.
+- Interfaces: CLI, MCP, SDK, and generic service API. Compatibility/operability and protocol belong in separate contract facets rather than capability inflation.
+- Candidate outcome: Deploy and host a static site manually or from an AI agent.
+- Description: “Static-site hosting service deployable through CLI, MCP, SDK, or API, with automatic HTTPS and global edge delivery.”
+- Benefits: No-cost static hosting; source-stated permanent site retention; automatic HTTPS; global edge delivery; source-stated unmetered bandwidth.
+- Requirements/exclusions: Signup, installation, repository, and build step are source-stated as not required for the basic deployment path; custom domains are paid.
+- Explicit unknown: The source does not establish whether an account is required specifically for permanent retention, despite separately saying basic deployment needs no signup and free accounts retain sites permanently.
+- Collection membership: Keep in broad Brokie and agent-compatible hosting/deployment views; exclude from inference/GPU.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
