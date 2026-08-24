@@ -409,6 +409,16 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Possible requirements: An MCP-compatible client and a GitHub App connection are inferred from the interfaces but are not explicit requirements in the supplied text.
 - Collection membership: Keep in broad Brokie and a future AI coding/governance view; exclude from inference/GPU.
 
+### FluidForms
+
+- Decision: Reject the candidate addition to the current AI inference/GPU slice; retain for the broad catalog under forms/no-code tooling.
+- The source's “embedding” means placing a form into a website, not vector embeddings or semantic search.
+- AI-assisted form creation and AI-driven form logic do not make the product reusable AI inference infrastructure.
+- Capabilities: Form builder, form-submission backend, AI-assisted form creation, configurable form logic, webhooks, and embeddable forms.
+- Description: “Form builder and submission backend with AI-assisted form creation, configurable logic, webhooks, and embeddable forms.”
+- Free-plan benefits: 100 form responses per month; unlimited forms including AI-created forms; webhooks; embeddable forms.
+- Unknowns: Whether responses are pooled across forms; limits on AI features; account/card requirements; geography; and eligibility.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
