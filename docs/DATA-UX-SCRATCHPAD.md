@@ -108,6 +108,13 @@ Possible operation families:
 
 Inputs, outputs, and formats should be separate facets. For example, an audio enhancer may have audio input and output, `noise-removal` and `echo-removal` operations, and MP3/WAV/FLAC formats without having an `audio-generation` capability.
 
+Compute resources need execution and ownership facets so “uses a GPU” is not confused with “provides a hosted GPU”:
+
+- execution location: provider-hosted, client device, self-hosted, hybrid, or unknown;
+- accelerator type and access method;
+- whether hardware is provided by the opportunity;
+- runtime or interface, such as browser, notebook, CLI, package, or kernel.
+
 ### Catalog membership versus views
 
 “Useful to Brokie eventually” and “belongs in the current AI inference/GPU proof-of-concept view” are separate decisions.
@@ -352,6 +359,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - No-cost benefit applies to the source-listed DeepSeek R1, DeepSeek V3, Llama, and Moonshot AI models, subject to rate limits of unknown quantity.
 - Claude, OpenAI, Grok, Gemini, and Nova are mentioned as paid catalog options and are not part of the no-cost benefit.
 - Unknowns: Rate-limit quantities, interface type, account/card requirements, geography, and eligibility.
+
+### RunMat
+
+- Decision status: Defer the candidate and replace both existing broad labels.
+- Remove `gpu-compute`: The source describes browser WebGPU acceleration, not access to provider-hosted GPU hardware.
+- Remove `notebook`: Jupyter kernel support is an integration, not evidence that RunMat provides a hosted notebook.
+- Capabilities: Browser numerical-computing IDE, MATLAB-syntax runtime, client-side GPU acceleration, Jupyter kernel integration, CLI runtime, and NPM package.
+- Candidate outcomes: Run MATLAB-style numerical computations without MATLAB license fees or desktop installation; accelerate supported workloads using an existing browser-accessible GPU.
+- Compute facets: Execution location is inferred as `client_device`; accelerator type is GPU; access method is WebGPU; hardware is not supplied by the opportunity.
+- Browser opportunity: No-cost browser-app access; no installation, account, or license fee required.
+- Open-source opportunity: Downloadable/self-hostable runtime with CLI, NPM package, and Jupyter kernel interfaces; license is unknown.
+- Collection membership: Keep in broad Brokie and numerical/local-compute views; exclude from collections promising free hosted GPU hardware or hosted notebooks.
 
 ## Open design questions
 
