@@ -87,6 +87,8 @@ Each benefit should support:
 - exact evidence for every field;
 - `unknown` rather than silently treating missing restrictions as absent.
 
+Publication gate: A product may be cataloged when its function is supported, but it must not be presented as a money-saving recommendation until at least one concrete benefit is supported by evidence. Membership in a “free resources” source collection may justify an opportunity candidate, but it does not supply missing offer terms.
+
 Example: Arize AI has a source-explicit free tier whose benefit is no-cost monitoring of up to `2 monitored_models`, with period, expiry, card requirement, and eligibility currently unknown.
 
 A product may expose multiple independent savings opportunities. For example, a hosted free tier and an open-source self-hosting option must be separate opportunity records so hosted quotas are not applied to self-hosting and “open source” does not imply free infrastructure.
@@ -441,6 +443,16 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Student opportunity: No-cost access to the professional tool suite; eligibility group is students; verification method and duration are unknown.
 - General opportunity: Trial access to the professional tool suite; duration, credit-card requirement, and eligibility are unknown.
 - Modeling consequence: Keep group-specific no-cost access and a general trial as separate opportunities under the same product.
+
+### CoCalc
+
+- Decision status: Defer removal; retain the product in virtual-computer/notebook collections while withholding an unverified savings recommendation.
+- Capabilities: Browser-accessible Linux environment, hosted Jupyter notebooks, cloud development environment, collaborative scientific computing, and preinstalled mathematics/data-science software.
+- Candidate outcomes: Use Ubuntu through a browser; run Jupyter notebooks without local setup; collaborate on mathematics, science, or data-science projects.
+- Description: “Collaborative cloud computing environment with browser access to Ubuntu, Jupyter notebooks, and preinstalled mathematics and data-science software.”
+- Offer problem: The supplied text says the environment contains lots of free software but does not state what CoCalc service access is free.
+- Explicit unknowns: Opportunity benefit, requirements, and limits.
+- Harness consequence: Derive a high-priority research job because the missing benefit blocks publication as a money-saving recommendation.
 
 ## Open design questions
 
