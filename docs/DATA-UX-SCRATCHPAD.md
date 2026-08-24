@@ -454,6 +454,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Explicit unknowns: Opportunity benefit, requirements, and limits.
 - Harness consequence: Derive a high-priority research job because the missing benefit blocks publication as a money-saving recommendation.
 
+### Cohesivity
+
+- Decision: Reject removal; retain in agent-infrastructure and AI/cloud-credit collections.
+- Introduce `agent-infrastructure` as distinct from `agent-platform`: Cohesivity supplies backend services that agents can use but the source does not establish an agent builder or orchestration environment.
+- Capabilities: Agent backend infrastructure, hosting, databases, object storage, LLM access, third-party API integration, email delivery, and search services.
+- Onboarding characteristic: Source-stated “agentic signup” indicates AI-agent operability rather than an agent-building capability.
+- Description: “Headless backend for AI agents combining hosting, databases, object storage, LLM access, email, search, and third-party APIs.”
+- Free-tier benefits: 10 projects; 100,000 edge requests with period unknown; 10 GB object storage; 100 emails with period unknown; one USD 5 monthly credit applicable to AI and search.
+- Do not multiply the credit across scopes: “AI and search” describes where one USD 5 benefit applies, not two separate USD 5 benefits.
+- Unknowns: Whether the AI/search credit is a shared balance; included LLMs/search services/APIs; database allowance; account/card requirements; and geography.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
