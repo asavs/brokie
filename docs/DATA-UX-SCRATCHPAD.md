@@ -535,6 +535,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Unit modeling: Preserve source unit `features`; normalized meaning `spec_work_items` is inferred rather than explicit, and must not be confused with included product capabilities.
 - Unknowns: What counts as a feature, knowledge-graph limits, agent integrations/interfaces, account/card requirements, retention, export, and collaboration limits.
 
+### ReportGPT
+
+- Decision: Accept removal from inference/GPU; retain in the broad writing/productivity catalog.
+- Capability: AI-assisted writing. Do not present the vertical application as reusable model inference.
+- Candidate outcome: Get assistance writing a report or document.
+- Description: “AI-powered writing assistant that operates with a user-provided API key.”
+- Benefit: No-cost access to the ReportGPT platform.
+- Conditional requirement: User-supplied API key for AI functionality.
+- Cost responsibility: Platform fee is source-stated as zero; external provider usage is not included and its cost is unknown.
+- Suggested projection: “Platform free · Bring your own API key · Provider usage may cost extra,” not “free AI inference.”
+- Unknowns: Supported providers, compatibility with free providers, ReportGPT account/card requirements, and document/storage/export/collaboration limits.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
