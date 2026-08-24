@@ -7,6 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const defaultCatalog = path.resolve(here, "..", "..", "packages", "librarian", "generated", "brokie-v0.0.1.sqlite");
 const defaultState = path.resolve(here, "..", "..", "var", "brokie-state.sqlite");
+const webPath = path.resolve(here, "..", "web", "index.html");
 
 function json(response, status, body) {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -70,6 +71,10 @@ export function createApi({ catalogPath = defaultCatalog, statePath = defaultSta
     try {
       const url = new URL(request.url, "http://localhost");
       if (request.method !== "GET") return json(response, 405, { error: "read_only_api" });
+      if (url.pathname === "/") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        return response.end(fs.readFileSync(webPath));
+      }
       if (url.pathname === "/health") {
         const metadata = Object.fromEntries(catalog.prepare("SELECT key, value FROM metadata").all().map((row) => [row.key, row.value]));
         return json(response, 200, { status: "ok", catalog: metadata });

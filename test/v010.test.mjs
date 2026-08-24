@@ -53,6 +53,9 @@ const base = `http://127.0.0.1:${server.address().port}`;
 try {
   const health = await fetch(`${base}/health`).then((response) => response.json());
   assert.equal(health.status, "ok");
+  const home = await fetch(`${base}/`).then((response) => response.text());
+  assert.match(home, /What are you[\s\S]*trying to do/);
+  assert.match(home, /Maintainer inbox/);
   const search = await fetch(`${base}/v1/opportunities?q=model&need=free-inference`).then((response) => response.json());
   assert.ok(search.count >= 1);
   assert.ok(search.data.every((item) => item.user_needs.some((need) => need.id === "free-inference")));
