@@ -487,6 +487,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Modeling consequence: Proprietary platform credits are usage units, not monetary credits unless the source supplies a currency value.
 - Explicit unknown: Which actions consume credits and at what rate. Account/card requirements and execution limits are also unknown.
 
+### LastPing
+
+- Decision: Reject removal; retain in agent-operations and developer-monitoring collections while excluding from inference/GPU.
+- Capabilities: Heartbeat/dead-man's-switch monitoring, job/process liveness monitoring, alert routing, and agent-operable monitoring configuration.
+- Monitoring subjects are separate facets: AI agents, cron jobs, and CI jobs. Monitoring an AI agent does not imply full LLM observability or model tracing.
+- Candidate outcome: Detect when an agent, scheduled job, or CI process stops checking in.
+- Description: “Dead-man's-switch monitoring for AI agents, cron jobs, and CI workflows, with configurable alert destinations.”
+- Opportunity eligibility: Individuals; the source does not define what qualifies.
+- Benefits: Source-stated unlimited monitors and unlimited alert destinations.
+- Unknowns: Individual qualification, destination types, check-frequency/timeout limits, account/card requirements, commercial use, and duration.
+- “Let AI agents build monitoring” is an operability characteristic, not agent-platform or inference capability.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
