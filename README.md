@@ -2,18 +2,19 @@
 
 Find free and discounted resources by **what you need to accomplish**, rather than by the company providing them.
 
-Brokie is an experiment in building an autonomous, provenance-conscious index of free tiers, credits, grants, and useful services. Version 0.0.1 contains the first librarian subsystem: it ingests supplied catalogs, keeps their original evidence, maps opportunities to controlled capabilities and user needs, and produces a searchable local explorer.
+Brokie is an experiment in building an autonomous, provenance-conscious index of free tiers, credits, grants, and useful services. Version 0.1.0 introduces the typed librarian pipeline: models propose classifications, while deterministic code owns evidence integrity, normalization, stable identity, immutable history, and review routing.
 
-## What 0.0.1 includes
+## What 0.1.0 includes
 
 - Markdown and CSV ingestion with stable source IDs and line/row provenance
-- A normalized SQLite schema and JSON staging format
-- Deterministic selection and initial annotations for AI, inference, and adjacent compute
-- A need-first static explorer
-- Direct and Pi-based zero-cost inference experiments
-- A small human-reviewed evaluation set
+- A versioned JSON contract, controlled vocabulary, and immutable SQLite revision store
+- Need-first capabilities with typed savings, limits, requirements, and uncertainty
+- Free OpenRouter and NVIDIA librarian adapters with one bounded repair attempt
+- Exact evidence validation, deterministic normalization, and inspectable run traces
+- A local search API, static explorer, refresh snapshots, and persistent review queues
+- Lock-protected unattended Linux jobs and systemd templates
 
-This release organizes supplied descriptions. It does not independently guarantee that an offer is current, available in a region, or compatible with another offer.
+This release classifies supplied descriptions. It does not independently guarantee that an offer is current, available in a region, or compatible with another offer.
 
 ## Requirements
 
@@ -40,18 +41,17 @@ node packages/librarian/build-explorer.mjs
 
 Then open `packages/librarian/generated/index.html`. Machine consumers can read `staging.json` or `brokie-v0.0.1.sqlite` in the same directory.
 
-## Inference experiment
+## Run the v0.1 librarian
 
 ```bash
-node packages/librarian/run-direct.mjs --provider=nvidia --model=nvidia/nemotron-3-ultra-550b-a55b
-node packages/librarian/evaluate.mjs packages/librarian/generated/runs/<trace>.json
+npm run librarian:v01 -- --record=/path/to/normalized-record.json --provider=openrouter --model=openrouter/free
 ```
 
-The runner refuses to operate without the selected provider's key and never falls back to a paid route.
+The runner reads the selected provider's environment key, refuses paid OpenRouter routes, and never falls back to one. See the [v0.1 librarian guide](docs/LIBRARIAN-V0.1.md) for NVIDIA usage, source-ID selection, state paths, and the bounded review workflow.
 
 ## Project status
 
-The `develop/v0.1.0` line adds a read-only search API, immutable refresh snapshots, material change detection, a persistent review queue, and lock-protected unattended Linux jobs. Hermes and NemoClaw remain candidates for the later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
+Version 0.1.0 is the local-first typed librarian proof of concept. Hermes and NemoClaw remain candidates for a later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
 
 The v0.1 catalog architecture is specified by the [typed data contract](docs/DATA-CONTRACT.md), its [Draft 2020-12 candidate schema](schemas/catalog-candidate.schema.json), a [versioned controlled vocabulary](schemas/vocabularies.v0.1.json), and an immutable [SQLite revision store](packages/catalog/schema.v0.1.sql). Librarian output is only a proposal: deterministic validation owns evidence integrity, scoped references, duplicate economics, indexing, and publication.
 
