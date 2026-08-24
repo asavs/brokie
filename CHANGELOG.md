@@ -7,6 +7,7 @@
 - Persistent review queue and auditable decisions.
 - Lock-protected unattended refresh runner and Linux service templates.
 - Native WSL verification and synthetic cross-platform integration tests.
+- Opt-in, loopback-only review workstation for structured decisions, desired tags, comments, and card-content critique.
 
 ## 0.0.1 — 2026-08-24
 

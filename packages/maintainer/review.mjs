@@ -22,7 +22,7 @@ try {
     const reviewId = args[1];
     const status = args[2];
     if (!reviewId || !["accepted", "rejected", "deferred"].includes(status)) throw new Error("Usage: review.mjs decide <review_id> <accepted|rejected|deferred> [--note=text]");
-    const result = db.prepare("UPDATE review_queue SET status=?,decision_note=?,decided_at=? WHERE review_id=? AND status IN ('open','deferred')").run(status, option("note", ""), new Date().toISOString(), reviewId);
+    const result = db.prepare("UPDATE review_queue SET status=?,decision_action=?,decision_note=?,decided_at=? WHERE review_id=? AND status IN ('open','deferred')").run(status, status === "accepted" ? "accept_proposal" : status === "rejected" ? "keep_previous" : "unsure", option("note", ""), new Date().toISOString(), reviewId);
     if (!result.changes) throw new Error(`Review item not found or already finalized: ${reviewId}`);
     console.log(JSON.stringify({ review_id: reviewId, status }, null, 2));
   } else throw new Error("Commands: list, show <id>, decide <id> <status>");

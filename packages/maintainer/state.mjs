@@ -33,5 +33,12 @@ export function openState(statePath) {
     CREATE INDEX IF NOT EXISTS review_queue_status_idx ON review_queue(status, created_at);
     CREATE INDEX IF NOT EXISTS review_queue_identity_idx ON review_queue(identity_key);
   `);
+  const reviewColumns = new Set(db.prepare("PRAGMA table_info(review_queue)").all().map((column) => column.name));
+  for (const [name, definition] of [
+    ["decision_action", "TEXT NOT NULL DEFAULT ''"],
+    ["proposed_capabilities_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["proposed_needs_json", "TEXT NOT NULL DEFAULT '[]'"],
+    ["card_feedback_json", "TEXT NOT NULL DEFAULT '{}'"],
+  ]) if (!reviewColumns.has(name)) db.exec(`ALTER TABLE review_queue ADD COLUMN ${name} ${definition}`);
   return db;
 }

@@ -44,6 +44,22 @@ node apps/api/server.mjs \
 
 The server binds only to `127.0.0.1:8787` by default and rejects non-GET methods. Test it with `curl http://127.0.0.1:8787/health`.
 
+### Local review workstation
+
+Review writes are disabled by default. To make decisions and leave structured card/tag feedback through the browser, explicitly enable them on a loopback-only development server:
+
+```bash
+node apps/api/server.mjs \
+  --catalog=/absolute/path/to/trusted/catalog.sqlite \
+  --state=var/brokie-state.sqlite \
+  --host=127.0.0.1 \
+  --review-writes=true
+```
+
+Open `http://127.0.0.1:8787/review`. Each response records the decision, desired controlled tags, overall comment, description-quality assessment, proposed source-grounded description, and requirements feedback. “Needs revision,” “merge,” and “unsure” remain unpromotable; browser review never promotes a snapshot.
+
+The POST endpoint additionally requires same-origin JavaScript's custom local-review header and JSON content type. It has no CORS permission and should never be exposed directly beyond loopback. Public or shared review requires authentication and CSRF protection that v0.1.0 intentionally does not provide.
+
 ## Service shape
 
 The files in `deploy/systemd/` document the intended Oracle/long-running Linux shape. Before using them:

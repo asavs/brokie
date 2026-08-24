@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { openState } from "../../packages/maintainer/state.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const defaultCatalog = path.resolve(here, "..", "..", "packages", "librarian", "generated", "brokie-v0.0.1.sqlite");
@@ -17,6 +18,15 @@ function json(response, status, body) {
 function parseLimit(value) {
   const parsed = Number(value ?? 25);
   return Number.isInteger(parsed) ? Math.min(100, Math.max(1, parsed)) : 25;
+}
+
+async function readJson(request) {
+  let body = "";
+  for await (const chunk of request) {
+    body += chunk;
+    if (body.length > 64_000) throw new Error("request body is too large");
+  }
+  return JSON.parse(body || "{}");
 }
 
 function opportunityDetails(db, row) {
@@ -64,16 +74,49 @@ function search(db, params) {
   return rows.map((row) => opportunityDetails(db, row));
 }
 
-export function createApi({ catalogPath = defaultCatalog, statePath = defaultState } = {}) {
+export function createApi({ catalogPath = defaultCatalog, statePath = defaultState, reviewWrites = false } = {}) {
   if (!fs.existsSync(catalogPath)) throw new Error(`Catalog database not found: ${catalogPath}`);
   const catalog = new DatabaseSync(catalogPath, { readOnly: true });
-  const server = http.createServer((request, response) => {
+  const server = http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://localhost");
+      const reviewMatch = url.pathname.match(/^\/v1\/reviews\/([^/]+)$/);
+      if (request.method === "POST" && reviewMatch) {
+        if (!reviewWrites) return json(response, 403, { error: "review_writes_disabled" });
+        if (request.headers["x-brokie-review"] !== "local" || !String(request.headers["content-type"] || "").startsWith("application/json")) return json(response, 403, { error: "local_review_header_required" });
+        const input = await readJson(request);
+        const actions = { accept_proposal: "accepted", keep_previous: "rejected", needs_revision: "deferred", merge: "deferred", unsure: "deferred" };
+        if (!actions[input.action]) return json(response, 400, { error: "invalid_action" });
+        const capabilityIds = new Set(catalog.prepare("SELECT capability_id FROM capabilities").all().map((row) => row.capability_id));
+        const needIds = new Set(catalog.prepare("SELECT user_need_id FROM user_needs").all().map((row) => row.user_need_id));
+        const proposedCapabilities = Array.isArray(input.proposed_capabilities) ? [...new Set(input.proposed_capabilities)] : [];
+        const proposedNeeds = Array.isArray(input.proposed_needs) ? [...new Set(input.proposed_needs)] : [];
+        if (proposedCapabilities.some((id) => !capabilityIds.has(id)) || proposedNeeds.some((id) => !needIds.has(id))) return json(response, 400, { error: "invalid_controlled_label" });
+        const note = String(input.note || "").slice(0, 4_000);
+        const card = input.card_feedback && typeof input.card_feedback === "object" ? {
+          description_rating: ["accurate", "incomplete", "misleading", "unknown"].includes(input.card_feedback.description_rating) ? input.card_feedback.description_rating : "unknown",
+          description_comment: String(input.card_feedback.description_comment || "").slice(0, 4_000),
+          proposed_description: String(input.card_feedback.proposed_description || "").slice(0, 8_000),
+          requirements_comment: String(input.card_feedback.requirements_comment || "").slice(0, 4_000),
+          tags_comment: String(input.card_feedback.tags_comment || "").slice(0, 4_000),
+        } : {};
+        const state = openState(statePath);
+        try {
+          const result = state.prepare(`UPDATE review_queue SET status=?,decision_action=?,decision_note=?,
+            proposed_capabilities_json=?,proposed_needs_json=?,card_feedback_json=?,decided_at=?
+            WHERE review_id=? AND status IN ('open','deferred')`).run(actions[input.action], input.action, note, JSON.stringify(proposedCapabilities), JSON.stringify(proposedNeeds), JSON.stringify(card), new Date().toISOString(), decodeURIComponent(reviewMatch[1]));
+          if (!result.changes) return json(response, 409, { error: "review_not_open" });
+          return json(response, 200, { review_id: decodeURIComponent(reviewMatch[1]), status: actions[input.action], action: input.action });
+        } finally { state.close(); }
+      }
       if (request.method !== "GET") return json(response, 405, { error: "read_only_api" });
       if (url.pathname === "/") {
         response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
         return response.end(fs.readFileSync(webPath));
+      }
+      if (url.pathname === "/review") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        return response.end(fs.readFileSync(path.resolve(here, "..", "web", "review.html")));
       }
       if (url.pathname === "/health") {
         const metadata = Object.fromEntries(catalog.prepare("SELECT key, value FROM metadata").all().map((row) => [row.key, row.value]));
@@ -97,7 +140,7 @@ export function createApi({ catalogPath = defaultCatalog, statePath = defaultSta
         const state = new DatabaseSync(statePath, { readOnly: true });
         try {
           const status = url.searchParams.get("status") || "open";
-          const rows = state.prepare("SELECT * FROM review_queue WHERE status = ? ORDER BY created_at, review_id LIMIT ?").all(status, parseLimit(url.searchParams.get("limit"))).map((row) => ({ ...row, payload: JSON.parse(row.payload_json), payload_json: undefined }));
+          const rows = (status === "all" ? state.prepare("SELECT * FROM review_queue ORDER BY created_at, review_id LIMIT ?").all(parseLimit(url.searchParams.get("limit"))) : state.prepare("SELECT * FROM review_queue WHERE status = ? ORDER BY created_at, review_id LIMIT ?").all(status, parseLimit(url.searchParams.get("limit")))).map((row) => ({ ...row, payload: JSON.parse(row.payload_json), proposed_capabilities: JSON.parse(row.proposed_capabilities_json || "[]"), proposed_needs: JSON.parse(row.proposed_needs_json || "[]"), card_feedback: JSON.parse(row.card_feedback_json || "{}"), payload_json: undefined, proposed_capabilities_json: undefined, proposed_needs_json: undefined, card_feedback_json: undefined }));
           return json(response, 200, { data: rows, count: rows.length });
         } finally { state.close(); }
       }
@@ -114,6 +157,6 @@ if (path.resolve(process.argv[1] || "") === fileURLToPath(import.meta.url)) {
   const args = Object.fromEntries(process.argv.slice(2).filter((arg) => arg.startsWith("--")).map((arg) => { const [key, ...value] = arg.slice(2).split("="); return [key, value.join("=")]; }));
   const host = args.host || "127.0.0.1";
   const port = Number(args.port || 8787);
-  const server = createApi({ catalogPath: args.catalog ? path.resolve(args.catalog) : defaultCatalog, statePath: args.state ? path.resolve(args.state) : defaultState });
+  const server = createApi({ catalogPath: args.catalog ? path.resolve(args.catalog) : defaultCatalog, statePath: args.state ? path.resolve(args.state) : defaultState, reviewWrites: args["review-writes"] === "true" });
   server.listen(port, host, () => console.log(JSON.stringify({ status: "listening", host, port })));
 }
