@@ -34,7 +34,7 @@ state.prepare(`INSERT INTO refresh_runs(run_id,started_at,status,previous_run_id
 function identity(record) {
   const url = String(record.source_url || "").trim().toLowerCase().replace(/\/$/, "");
   const name = String(record.source_name || "").trim().toLowerCase().replace(/\s+/g, " ");
-  return `${record.source_kind}|${url || name}`;
+  return `${record.source_kind}|${name}|${url}`;
 }
 
 function material(record) {

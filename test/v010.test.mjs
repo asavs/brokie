@@ -20,6 +20,7 @@ const csv = path.join(root, "test", "fixtures", "startup-offers.csv");
 const first = run("packages/maintainer/refresh.mjs", path.join(root, "test", "fixtures", "free-for-dev.md"), csv, `--state-dir=${temp}`);
 assert.equal(first.initial_load, true);
 assert.equal(first.review_items_added, 0);
+assert.equal(first.added, first.records, "initial identity count must not collapse distinct records");
 
 const second = run("packages/maintainer/refresh.mjs", path.join(root, "test", "fixtures", "free-for-dev-v2.md"), csv, `--state-dir=${temp}`);
 assert.equal(second.initial_load, false);
@@ -67,6 +68,7 @@ try {
 }
 
 const jobTemp = path.join(root, "test", "tmp", "job");
+fs.rmSync(jobTemp, { recursive: true, force: true });
 fs.mkdirSync(jobTemp, { recursive: true });
 fs.writeFileSync(path.join(jobTemp, "refresh.lock"), "occupied\n");
 const lockedJob = spawnSync(process.execPath, [path.join(root, "packages/maintainer/job.mjs"), path.join(root, "test/fixtures/free-for-dev.md"), csv, `--state-dir=${jobTemp}`], { cwd: root, encoding: "utf8" });
