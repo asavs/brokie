@@ -40,6 +40,7 @@ Provider -> Product -> Opportunity
 - **Evidence:** Exact source-grounded text supporting a claim, plus its derivation method.
 - **Relationship:** Alias, duplicate, parent provider, alternative, dependency, stackability, or replacement.
 - **Verification:** Last checked time, method, result, and suspected staleness.
+- **Unknown:** A missing, ambiguous, contradictory, or suspected-stale field, attached to the affected entity and supporting evidence.
 - **Review decision:** Human conclusion, explanation, desired labels, and unresolved questions.
 
 ### Assertions and uncertainty
@@ -51,6 +52,16 @@ Each extracted assertion should reference evidence and carry a small, inspectabl
 - `evidence_ids`: one or more supporting source excerpts.
 
 A model-generated confidence score may be retained as optional diagnostic metadata, but it is not required for v0.1 and does not determine trust or promotion unless it is calibrated against reviewed examples.
+
+An assertion state does not fully describe incomplete information. The catalog contract also records explicit unknowns:
+
+```text
+field
+reason: missing | ambiguous | contradictory | suspected_stale
+evidence_ids
+```
+
+The librarian emits assertions and unknowns. The harness decides which unknowns matter enough to create operational `research_job` records, routes those jobs to a separate researcher, and attaches any returned evidence. Research jobs are workflow state, not catalog ontology.
 
 ### Offer/access terms
 
@@ -178,6 +189,7 @@ preserve source
   -> attach evidence to every claim
   -> propose duplicates/relationships
   -> validate contradictions and unsupported claims
+  -> derive research jobs from important unknowns
   -> human review disagreements
   -> publish trusted snapshot
   -> monitor for source and availability changes
@@ -294,6 +306,20 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Offer data for Gemma 4: 30 requests per minute; 14,400 requests per day; 16,000 input tokens per minute.
 - Uncertainty: The source does not unambiguously map “Flash” to both named Gemini Flash versions.
 - Other unknowns: Output-token allowance; whether quotas apply to an API, browser environment, or both; account/card requirements; geography; and eligibility.
+
+### Keywords AI
+
+- Decision status: Needs taxonomy revision; do not accept either existing tag set unchanged.
+- Capabilities supported by the supplied text: LLM monitoring, unified model API, and model gateway.
+- Remove `evaluation`: Monitoring alone does not establish evaluation.
+- Remove `model-inference`: The source describes calling other models through one interface, not inference supplied by Keywords AI.
+- Candidate outcomes: Monitor an LLM application; call many LLMs through one interface; use a model gateway.
+- Description: “LLM monitoring platform and unified interface for calling more than 200 models.”
+- Supported-model claim: At least 200 models.
+- Offer claims: 10,000 free requests per month; USD 0 for platform features.
+- Explicit unknown: `allowance.scope` is ambiguous because the supplied evidence does not say whether “requests” meters gateway model calls, monitoring/logging events, or another operation.
+- The harness should derive a research job asking what the allowance meters and whether third-party inference charges are separate.
+- Other unknowns: Account/card requirements, geography, rate limits, and eligibility.
 
 ## Open design questions
 
