@@ -55,6 +55,8 @@ The `develop/v0.1.0` line adds a read-only search API, immutable refresh snapsho
 
 The v0.1 catalog architecture is specified by the [typed data contract](docs/DATA-CONTRACT.md), its [Draft 2020-12 candidate schema](schemas/catalog-candidate.schema.json), a [versioned controlled vocabulary](schemas/vocabularies.v0.1.json), and an immutable [SQLite revision store](packages/catalog/schema.v0.1.sql). Librarian output is only a proposal: deterministic validation owns evidence integrity, scoped references, duplicate economics, indexing, and publication.
 
+The provider-neutral [v0.1 librarian runner](docs/LIBRARIAN-V0.1.md) adds bounded model classification, one repair attempt, deterministic normalization, stable identity planning, inspectable traces, and mandatory review routing. It supports the OpenRouter free-model router and explicitly selected NVIDIA NIM endpoints without paid fallback.
+
 See [the product brief](docs/PRODUCT_BRIEF.md) and [v0.0.1 experiment report](docs/V0.0.1-EXPERIMENT.md).
 
 For current Linux commands and the eventual service shape, see [WSL development](docs/WSL-DEVELOPMENT.md).

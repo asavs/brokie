@@ -101,12 +101,68 @@ assert.deepEqual(
   "an explicit trial with unstated duration must remain representable",
 );
 
+assert.ok(
+  mutatedFixture("telemetry-dev.json", (fixture) => {
+    fixture.candidate.opportunities[0].entitlements = [];
+  }).some((error) => error.includes("must NOT have fewer than 1 items")),
+  "an opportunity must contain at least one concrete entitlement",
+);
+
+assert.ok(
+  mutatedFixture("telemetry-dev.json", (fixture) => {
+    fixture.candidate.product.description.text = "Free observability service.";
+  }).some((error) => error.includes("product function/outcome contains offer language")),
+  "product function text must not absorb the economics of an offer",
+);
+
+assert.ok(
+  mutatedFixture("telemetry-dev.json", (fixture) => {
+    fixture.candidate.possible_canonical_matches.push({
+      candidate_name: fixture.candidate.product.source_name,
+      candidate_url: null,
+      support: structuredClone(fixture.candidate.product.description.support),
+    });
+  }).some((error) => error.includes("repeats the source product itself")),
+  "canonical-match candidates must represent an actual identity uncertainty",
+);
+
+assert.ok(
+  mutatedFixture("telemetry-dev.json", (fixture) => {
+    fixture.candidate.product.links.push({
+      role: "canonical_product",
+      url: "https://not-in-the-source.example",
+      support: {
+        basis: "explicit",
+        evidence_ids: [fixture.candidate.evidence_spans[0].id],
+      },
+    });
+  }).some((error) => error.includes("explicit link lacks URL evidence")),
+  "an explicit link must cite source evidence containing that URL",
+);
+
+assert.ok(
+  mutatedFixture("telemetry-dev.json", (fixture) => {
+    fixture.candidate.opportunities[0].entitlements[0].kind = "no_cost_access";
+  }).some((error) => error.includes("use included_usage")),
+  "metered allowances must not collapse into broad no-cost access",
+);
+
+assert.ok(
+  mutatedFixture("telemetry-dev.json", (fixture) => {
+    fixture.candidate.opportunities[0].entitlements[0].duration = {
+      value: 1,
+      unit: "month",
+    };
+  }).some((error) => error.includes("duration is not explicitly evidenced")),
+  "a recurring cadence must not be misread as the offer's total duration",
+);
+
 console.log(
   JSON.stringify({
     status: "ok",
     contract_version: contractSchema.properties.contract_version.const,
     vocabulary_version: vocabulary.version,
     fixtures: fixtureFiles.length,
-    negative_guards: 8,
+    negative_guards: 14,
   }),
 );

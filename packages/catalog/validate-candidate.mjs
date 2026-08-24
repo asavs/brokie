@@ -21,6 +21,12 @@ const vocabularyConcepts = new Map(
   ]),
 );
 const normalizedUnits = new Set(vocabulary.normalized_units);
+const offerLanguage = /(?:\bfree\b|\bdiscount(?:ed|s)?\b|\bcredits?\b|\btrial\b|[$\u20ac\u00a3]\s*\d|\bper\s+(?:minute|hour|day|week|month|year)\b)/i;
+const statedDuration = /(?:\bfor\b|\bduring\b|\bvalid\s+for\b|\bexpires?\s+after\b|\btrial\b).{0,40}\b(?:minute|hour|day|week|month|year)s?\b/i;
+
+export function hasExplicitDurationEvidence(text) {
+  return statedDuration.test(String(text ?? ""));
+}
 
 function stableJson(value) {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -86,6 +92,39 @@ export function validateCandidateDocument(wrapper) {
       errors.push(`evidence quote is not an exact source substring: ${evidence.id}`);
     }
   }
+  const supportQuotes = (support) =>
+    (support?.evidence_ids ?? [])
+      .map((evidenceId) => evidenceById.get(evidenceId)?.quote ?? "")
+      .join(" ");
+
+  for (const supportedText of [
+    candidate.product.description,
+    ...candidate.product.claimed_outcomes,
+  ]) {
+    if (supportedText?.text && offerLanguage.test(supportedText.text)) {
+      errors.push(`product function/outcome contains offer language: ${supportedText.text}`);
+    }
+  }
+  for (const organizationRole of candidate.product.organization_roles) {
+    if (
+      organizationRole.support.basis === "explicit" &&
+      !supportQuotes(organizationRole.support)
+        .toLocaleLowerCase("en-US")
+        .includes(organizationRole.organization_name.toLocaleLowerCase("en-US"))
+    ) {
+      errors.push(
+        `explicit organization role lacks named evidence: ${organizationRole.organization_name}`,
+      );
+    }
+  }
+  for (const match of candidate.possible_canonical_matches) {
+    if (
+      match.candidate_name.trim().toLocaleLowerCase("en-US") ===
+      candidate.product.source_name.trim().toLocaleLowerCase("en-US")
+    ) {
+      errors.push(`possible canonical match repeats the source product itself: ${match.candidate_name}`);
+    }
+  }
 
   walk(candidate, [], (value, pathParts) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
@@ -137,6 +176,13 @@ export function validateCandidateDocument(wrapper) {
     ) {
       errors.push(`effective period ends before it starts in ${opportunity.local_key}`);
     }
+    if (
+      opportunity.effective_period &&
+      !opportunity.effective_period.from &&
+      !opportunity.effective_period.to
+    ) {
+      errors.push(`empty effective_period must be omitted in ${opportunity.local_key}`);
+    }
     const hasAudienceGate = opportunity.conditions.some(
       ({ family }) => family === "audience",
     );
@@ -174,6 +220,24 @@ export function validateCandidateDocument(wrapper) {
     }
 
     const entitlementKeys = new Set(opportunity.entitlements.map(({ key }) => key));
+    for (const entitlement of opportunity.entitlements) {
+      if (
+        entitlement.kind === "no_cost_access" &&
+        (entitlement.quantity || entitlement.cadence)
+      ) {
+        errors.push(
+          `no_cost_access carries metered usage in ${opportunity.local_key}/${entitlement.key}; use included_usage`,
+        );
+      }
+      if (entitlement.duration) {
+        const durationEvidence = supportQuotes(entitlement.support);
+        if (!hasExplicitDurationEvidence(durationEvidence)) {
+          errors.push(
+            `duration is not explicitly evidenced in ${opportunity.local_key}/${entitlement.key}`,
+          );
+        }
+      }
+    }
     for (const constraint of opportunity.constraints) {
       if (
         constraint.target_key !== "opportunity" &&
@@ -250,6 +314,19 @@ export function validateCandidateDocument(wrapper) {
       economicFingerprints.set(fingerprint, entitlement.key);
     }
   }
+
+  walk(candidate, [], (value, pathParts) => {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      typeof value.url === "string" &&
+      value.support?.basis === "explicit" &&
+      !supportQuotes(value.support).includes(value.url)
+    ) {
+      errors.push(`explicit link lacks URL evidence at /${pathParts.join("/")}: ${value.url}`);
+    }
+  });
 
   return errors;
 }
