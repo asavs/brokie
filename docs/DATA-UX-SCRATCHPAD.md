@@ -173,7 +173,7 @@ preserve source
   -> monitor for source and availability changes
 ```
 
-Models should propose structured facts; deterministic validation and human-reviewed evidence decide what becomes trusted.
+Models should propose structured facts; deterministic validation and human-reviewed evidence decide what becomes trusted. Keep prompts thin and the harness thick: the data contract, provenance checks, validation, entity resolution, and review gates carry the system's durable behavior.
 
 ### Entity resolution
 
@@ -185,14 +185,9 @@ Multiple source records may describe the same underlying product or opportunity.
 - Keep conflicting, stale-looking, or time-sensitive claims as unverified claims until checked.
 - Queue uncertain merges and contradictions for review rather than silently choosing one record.
 
-### Claims are not capabilities
+### Claim and capability fields
 
-Marketing outcome verbs such as “improve,” “optimize,” or “accelerate” do not by themselves prove a distinct product mechanism.
-
-- Preserve the phrase as a source-attributed outcome claim when it helps explain the product's intended benefit.
-- Classify only the concrete mechanisms supported by evidence, such as evaluation, tracing, simulation, optimization, fine-tuning, or automated iteration.
-- Do not infer recursive self-improvement, autonomous optimization loops, model training, or model modification from the word “improve.”
-- Let search recall use the claimed outcome, while capability filters remain evidence-grounded.
+The contract keeps source-attributed `claimed_outcomes` separate from evidence-grounded `capabilities`. Search may use both fields without requiring prompt-specific rules for individual marketing verbs.
 
 ## Reviewed examples
 
@@ -259,13 +254,25 @@ Marketing outcome verbs such as “improve,” “optimize,” or “accelerate�
 - Remove `agent-platform` / `build-agent`: Evaluating and simulating agent applications is not evidence that the product builds agents.
 - Remove `model-api`: The source presents a gateway that mediates model access, not hosted model inference supplied by Future AGI.
 - Candidate outcomes: Evaluate an AI system; monitor or trace an AI system; test or simulate an AI agent; add or test guardrails; use a model gateway.
-- Claimed outcome: “Improve” LLM and agent applications. Treat this as a source-attributed benefit of the evidenced evaluation/observability mechanisms, not as evidence of recursive self-improvement or an autonomous optimization loop.
+- Claimed outcome: “Improve” LLM and agent applications.
 - Description: “Platform for evaluating, observing, tracing, simulating, and applying guardrails to LLM and AI-agent applications.”
 - Offer data: Free tier; 50 GB storage; 2,000 evaluation credits; 100,000 gateway requests per month; 1,000,000 text-simulation tokens; 60 voice-simulation minutes; unlimited projects; unlimited seats; BYOK LLM-as-judge with a USD 0 platform fee.
 - Only the gateway request limit has an explicit monthly reset in the supplied text; reset periods for the other metered allowances remain unknown.
 - Requirement relationship: Bringing one's own model key is required specifically for the USD 0 platform-fee LLM-as-judge arrangement.
 - Distribution: Open source.
 - Other unknowns: Account, card, geography, and general eligibility.
+
+### Gonka Broker
+
+- Decision: Accept the candidate classification.
+- Capabilities: Hosted model inference and OpenAI-compatible model API.
+- Candidate outcomes: Call an AI model through an API; obtain free model inference.
+- Remove `gpu-compute`: The GPU network is provider-side infrastructure, not a GPU machine or accelerator exposed for user-controlled compute.
+- Description: “OpenAI-compatible API serving open-source models through a decentralized inference network.”
+- Architecture: Decentralized GPU network.
+- Offer data: Free token allowance of at least 1,000,000 tokens, resetting monthly.
+- The allowance requires a comparator in the contract: `quantity: 1000000`, `comparator: at_least`, `unit: tokens`, `period: month`.
+- Unknowns: Whether the allowance covers input, output, or combined tokens; model-specific differences; rate limits; account/card requirements; and geography.
 
 ## Open design questions
 
