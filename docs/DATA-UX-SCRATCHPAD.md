@@ -386,6 +386,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Explicit unknown: The source does not establish whether an account is required specifically for permanent retention, despite separately saying basic deployment needs no signup and free accounts retain sites permanently.
 - Collection membership: Keep in broad Brokie and agent-compatible hosting/deployment views; exclude from inference/GPU.
 
+### telemetry.dev
+
+- Decision: Accept the candidate classification of AI observability; remove model API.
+- Receiving telemetry about model calls through a generic ingestion interface is not evidence that the service provides model inference.
+- Capabilities: AI/LLM observability, model-call tracing, tool-step tracing, and token/cost/latency/error monitoring.
+- Interfaces: OTLP over HTTP and TypeScript SDK.
+- Candidate outcomes: Monitor an AI/LLM application; trace model calls or agent tool steps; diagnose token usage, cost, latency, and errors.
+- Description: “OpenTelemetry-based observability service for tracing model calls and tool steps, including token, cost, latency, and error data.”
+- Hosted Free-plan benefits: 10,000 spans per month; 7-day retention; 1 project; 2 seats.
+- Requirement: Credit card explicitly not required.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
