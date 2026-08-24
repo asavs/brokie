@@ -185,6 +185,15 @@ Multiple source records may describe the same underlying product or opportunity.
 - Keep conflicting, stale-looking, or time-sensitive claims as unverified claims until checked.
 - Queue uncertain merges and contradictions for review rather than silently choosing one record.
 
+### Claims are not capabilities
+
+Marketing outcome verbs such as “improve,” “optimize,” or “accelerate” do not by themselves prove a distinct product mechanism.
+
+- Preserve the phrase as a source-attributed outcome claim when it helps explain the product's intended benefit.
+- Classify only the concrete mechanisms supported by evidence, such as evaluation, tracing, simulation, optimization, fine-tuning, or automated iteration.
+- Do not infer recursive self-improvement, autonomous optimization loops, model training, or model modification from the word “improve.”
+- Let search recall use the claimed outcome, while capability filters remain evidence-grounded.
+
 ## Reviewed examples
 
 ### Atomic Mail
@@ -242,6 +251,21 @@ Multiple source records may describe the same underlying product or opportunity.
 - Collections: AI notebooks, virtual compute, and GPU compute.
 - Description: “Hosted Python and Jupyter notebook environment with optional accelerated compute.”
 - Pipeline consequence: Duplicate source records become evidence attached to one canonical product, not duplicate opportunity cards.
+
+### Future AGI
+
+- Decision status: Needs taxonomy and structured-offer revision; do not accept either existing tag set unchanged.
+- Capabilities: AI evaluation, observability/tracing, model gateway/routing, AI testing/simulation, and AI safety/guardrails.
+- Remove `agent-platform` / `build-agent`: Evaluating and simulating agent applications is not evidence that the product builds agents.
+- Remove `model-api`: The source presents a gateway that mediates model access, not hosted model inference supplied by Future AGI.
+- Candidate outcomes: Evaluate an AI system; monitor or trace an AI system; test or simulate an AI agent; add or test guardrails; use a model gateway.
+- Claimed outcome: “Improve” LLM and agent applications. Treat this as a source-attributed benefit of the evidenced evaluation/observability mechanisms, not as evidence of recursive self-improvement or an autonomous optimization loop.
+- Description: “Platform for evaluating, observing, tracing, simulating, and applying guardrails to LLM and AI-agent applications.”
+- Offer data: Free tier; 50 GB storage; 2,000 evaluation credits; 100,000 gateway requests per month; 1,000,000 text-simulation tokens; 60 voice-simulation minutes; unlimited projects; unlimited seats; BYOK LLM-as-judge with a USD 0 platform fee.
+- Only the gateway request limit has an explicit monthly reset in the supplied text; reset periods for the other metered allowances remain unknown.
+- Requirement relationship: Bringing one's own model key is required specifically for the USD 0 platform-fee LLM-as-judge arrangement.
+- Distribution: Open source.
+- Other unknowns: Account, card, geography, and general eligibility.
 
 ## Open design questions
 
