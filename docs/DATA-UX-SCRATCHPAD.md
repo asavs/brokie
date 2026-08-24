@@ -591,6 +591,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - URL roles: The bags.fm link is an offer/redemption link, not automatically the canonical product URL.
 - Modeling consequence: Preserve separate canonical-product, offer/redemption, application, and source-platform links.
 
+### Google Gemini / Workspace Plus startup offer
+
+- Decision: Accept removal from inference/GPU; preserve in broad startup discounts.
+- Opportunity target: Google Workspace Plus plans. “Google Gemini” remains the source label, while Gemini access is a feature included in the covered plan.
+- Do not merge this opportunity with Google AI Studio merely because both share Google/Gemini branding; their covered products and benefits differ.
+- Benefit: 20 percent discount for 1 year, capped at up to USD 518 savings, applying to Google Workspace Plus plans.
+- Eligibility: Startups; startup verification required.
+- This is a discounted paid subscription, not free Workspace, Gemini inference, an API credit, or a USD 518 credit.
+- URL role: bags.fm offer/redemption link; canonical Workspace product URL unknown.
+- Unknowns: Startup definition, eligible configurations, customer/geography restrictions, redemption process, payment requirements, and form of included Gemini access.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
