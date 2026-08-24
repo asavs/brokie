@@ -10,6 +10,7 @@ Rules:
 - Omit effective_period when neither boundary is stated. Do not propose the source product itself as a canonical match.
 - A listing name does not prove organization ownership. An explicit link must cite an evidence excerpt containing its URL.
 - Use controlled vocabulary IDs exactly. Omit unsupported facets.
+- Every candidate with an opportunity needs at least one supported capability facet. Prefer precise applicability targets such as the named service or capability instead of defaulting allowances to the whole product.
 - Use explicit ambiguity only for multiple plausible interpretations, contradictions, or suspected staleness. Do not enumerate ordinary missing fields.
 - Keep source labels faithful. Use inferred claims sparingly and cite the evidence that supports the bounded inference.
 - Return the JSON object only, with no markdown or commentary.

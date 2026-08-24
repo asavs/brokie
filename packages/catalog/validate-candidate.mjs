@@ -125,6 +125,12 @@ export function validateCandidateDocument(wrapper) {
       errors.push(`possible canonical match repeats the source product itself: ${match.candidate_name}`);
     }
   }
+  if (
+    candidate.opportunities.length > 0 &&
+    !candidate.product.facets.some(({ namespace }) => namespace === "capability")
+  ) {
+    errors.push("candidate with an opportunity must contain at least one capability facet");
+  }
 
   walk(candidate, [], (value, pathParts) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;

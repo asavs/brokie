@@ -2,6 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+function ensureColumn(db, table, column, definition) {
+  const columns = new Set(
+    db.prepare(`PRAGMA table_info(${table})`).all().map(({ name }) => name),
+  );
+  if (!columns.has(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
 export function openState(statePath) {
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   const db = new DatabaseSync(statePath);
@@ -74,12 +81,41 @@ export function openState(statePath) {
       opportunity_revision_ids_json TEXT NOT NULL CHECK(json_valid(opportunity_revision_ids_json)),
       reason TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','processed')),
+      decision TEXT CHECK(decision IS NULL OR decision IN ('accepted','rejected','deferred')),
+      decision_note TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL,
-      processed_at TEXT
+      processed_at TEXT,
+      decided_at TEXT
     );
     CREATE INDEX IF NOT EXISTS librarian_runs_status_idx ON librarian_runs(status, started_at);
     CREATE INDEX IF NOT EXISTS revision_review_queue_status_idx
       ON revision_review_queue(status, created_at);
   `);
+  ensureColumn(
+    db,
+    "revision_review_queue",
+    "decision",
+    "TEXT CHECK(decision IS NULL OR decision IN ('accepted','rejected','deferred'))",
+  );
+  ensureColumn(db, "revision_review_queue", "decision_note", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "revision_review_queue", "decided_at", "TEXT");
   return db;
+}
+
+export function recordRevisionReviewDecision(
+  db,
+  reviewId,
+  { decision, note = "", decidedAt = new Date().toISOString() },
+) {
+  if (!["accepted", "rejected", "deferred"].includes(decision)) {
+    throw new Error(`invalid revision review decision: ${decision}`);
+  }
+  const result = db.prepare(`
+    UPDATE revision_review_queue
+    SET status = 'processed', decision = ?, decision_note = ?,
+      processed_at = ?, decided_at = ?
+    WHERE review_id = ? AND status = 'open'
+  `).run(decision, note, decidedAt, decidedAt, reviewId);
+  if (result.changes !== 1) throw new Error(`open revision review not found: ${reviewId}`);
+  return db.prepare("SELECT * FROM revision_review_queue WHERE review_id = ?").get(reviewId);
 }

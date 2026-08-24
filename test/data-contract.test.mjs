@@ -157,12 +157,21 @@ assert.ok(
   "a recurring cadence must not be misread as the offer's total duration",
 );
 
+assert.ok(
+  mutatedFixture("telemetry-dev.json", (fixture) => {
+    fixture.candidate.product.facets = fixture.candidate.product.facets.filter(
+      ({ namespace }) => namespace !== "capability",
+    );
+  }).some((error) => error.includes("at least one capability facet")),
+  "an opportunity must remain discoverable through a need-first capability",
+);
+
 console.log(
   JSON.stringify({
     status: "ok",
     contract_version: contractSchema.properties.contract_version.const,
     vocabulary_version: vocabulary.version,
     fixtures: fixtureFiles.length,
-    negative_guards: 14,
+    negative_guards: 15,
   }),
 );

@@ -23,6 +23,9 @@ function supportedText(value, evidenceSpans, path, actions) {
 }
 
 const offerLanguage = /(?:\bfree\b|\bdiscount(?:ed|s)?\b|\bcredits?\b|\btrial\b|[$\u20ac\u00a3]\s*\d|\bper\s+(?:minute|hour|day|week|month|year)\b)/i;
+const explicitPublicAccess = /(?:\bpublic(?:ly)?\b|\banyone\b|\bopen\s+to\s+all\b|\bno\s+(?:application|approval|eligibility)\b)/i;
+const explicitCalendarAlignment = /(?:\bcalendar\b|\bcalendar\s+(?:month|year)\b|\bresets?\s+(?:on|at)\b)/i;
+const explicitRollingAlignment = /(?:\brolling\b|\bevery\s+\d+(?:\.\d+)?\s+(?:minute|hour|day|week|month|year)s?\b)/i;
 
 function functionOnlyDescription(description, actions) {
   if (!description?.text || !offerLanguage.test(description.text)) return description;
@@ -32,6 +35,7 @@ function functionOnlyDescription(description, actions) {
   if (clauseStart >= 0) text = text.slice(0, clauseStart).trim();
   if (text && !/[.!?]$/.test(text)) text += ".";
   if (!text || offerLanguage.test(text)) return description;
+  text = text[0].toLocaleUpperCase("en-US") + text.slice(1);
   actions.push("product.description: removed a deterministic offer clause from function text");
   return {
     text,
@@ -101,6 +105,16 @@ export function normalizeCandidateShape(input) {
       actions,
     );
     if (
+      opportunity.availability?.value === "public" &&
+      opportunity.availability.support?.basis === "explicit" &&
+      !explicitPublicAccess.test(supportText(opportunity.availability.support))
+    ) {
+      opportunity.availability.support.basis = "inferred";
+      actions.push(
+        `opportunities.${opportunityIndex}.availability: downgraded public access to inferred`,
+      );
+    }
+    if (
       opportunity.effective_period === null ||
       (opportunity.effective_period &&
         !opportunity.effective_period.from &&
@@ -146,6 +160,24 @@ export function normalizeCandidateShape(input) {
         delete entitlement.duration;
         actions.push(
           `opportunities.${opportunityIndex}.entitlements.${entitlementIndex}.duration: removed without explicit duration evidence`,
+        );
+      }
+      if (
+        entitlement.cadence?.alignment === "calendar" &&
+        !explicitCalendarAlignment.test(supportText(entitlement.support))
+      ) {
+        entitlement.cadence.alignment = "unknown";
+        actions.push(
+          `opportunities.${opportunityIndex}.entitlements.${entitlementIndex}.cadence.alignment: replaced unsupported calendar alignment with unknown`,
+        );
+      }
+      if (
+        entitlement.cadence?.alignment === "rolling" &&
+        !explicitRollingAlignment.test(supportText(entitlement.support))
+      ) {
+        entitlement.cadence.alignment = "unknown";
+        actions.push(
+          `opportunities.${opportunityIndex}.entitlements.${entitlementIndex}.cadence.alignment: replaced unsupported rolling alignment with unknown`,
         );
       }
       if (entitlement.kind !== "percentage_discount" && entitlement.percentage_value) {

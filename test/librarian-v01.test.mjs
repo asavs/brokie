@@ -5,9 +5,13 @@ import { DatabaseSync } from "node:sqlite";
 import { prepareSourceObservation } from "../packages/catalog/identity-plan.mjs";
 import { normalizeCandidateShape } from "../packages/catalog/normalize-candidate.mjs";
 import { createCatalogStore } from "../packages/catalog/store.mjs";
+import { validateCandidateDocument } from "../packages/catalog/validate-candidate.mjs";
 import { createCompatibleProvider } from "../packages/librarian/provider.mjs";
 import { runLibrarianV01 } from "../packages/librarian/run-v0.1-core.mjs";
-import { openState } from "../packages/maintainer/state.mjs";
+import {
+  openState,
+  recordRevisionReviewDecision,
+} from "../packages/maintainer/state.mjs";
 
 const temp = path.join(import.meta.dirname, "tmp", "librarian-v01");
 assert.ok(temp.startsWith(path.join(import.meta.dirname, "tmp")));
@@ -168,27 +172,39 @@ assert.throws(
   /refusing non-free OpenRouter model/,
 );
 
-const modelShaped = structuredClone(fixture.candidate);
-modelShaped.evidence_spans.push({
-  id: "ev_model_shape",
-  quote: "Free hosted model inference API with 1,000 requests per month.",
-});
-modelShaped.product.description =
-  "Free hosted model inference API with 1,000 requests per month.";
-modelShaped.opportunities[0].effective_period = {
-  from: null,
-  to: null,
-  support: { basis: "explicit", evidence_ids: ["ev_model_shape"] },
-};
-modelShaped.opportunities[0].entitlements[0].duration = { value: 1, unit: "month" };
-modelShaped.opportunities[0].entitlements[0].percentage_value = null;
-const normalized = normalizeCandidateShape(modelShaped);
-assert.equal(normalized.candidate.product.description.text, "hosted model inference API.");
+const calibration = JSON.parse(
+  fs.readFileSync(
+    path.join(
+      import.meta.dirname,
+      "fixtures",
+      "librarian",
+      "nemotron-monthly-inference.json",
+    ),
+    "utf8",
+  ),
+);
+const normalized = normalizeCandidateShape(calibration.candidate);
+assert.equal(normalized.candidate.product.description.text, "Hosted model inference API.");
 assert.equal(normalized.candidate.product.description.support.basis, "inferred");
 assert.equal(normalized.candidate.opportunities[0].effective_period, undefined);
 assert.equal(normalized.candidate.opportunities[0].entitlements[0].duration, undefined);
 assert.equal(normalized.candidate.opportunities[0].entitlements[0].percentage_value, undefined);
-assert.ok(normalized.actions.length >= 5, "normalization must remain inspectable");
+assert.equal(
+  normalized.candidate.opportunities[0].entitlements[0].cadence.alignment,
+  "unknown",
+);
+assert.equal(
+  normalized.candidate.opportunities[0].availability.support.basis,
+  "inferred",
+);
+assert.ok(normalized.actions.length >= 9, "normalization must remain inspectable");
+assert.ok(
+  validateCandidateDocument({
+    source_text: calibration.source_text,
+    candidate: normalized.candidate,
+  }).some((error) => error.includes("at least one capability facet")),
+  "the retained live calibration candidate must fail need-first completeness",
+);
 
 function responseForProvider(model) {
   return {
@@ -231,6 +247,15 @@ const openRouterProvider = createCompatibleProvider({
 await openRouterProvider.complete([{ role: "user", content: "fixture" }]);
 assert.deepEqual(openRouterRequest.response_format, { type: "json_object" });
 
+const rejectedReview = recordRevisionReviewDecision(state, first.review_id, {
+  decision: "rejected",
+  note: "Calibration candidate lacks required need-first facets.",
+  decidedAt: "2026-08-24T23:00:00Z",
+});
+assert.equal(rejectedReview.status, "processed");
+assert.equal(rejectedReview.decision, "rejected");
+assert.match(rejectedReview.decision_note, /need-first facets/);
+
 catalog.close();
 state.close();
 console.log(
@@ -241,5 +266,6 @@ console.log(
     inspectable_failure: "verified",
     deterministic_normalization: "verified",
     provider_profiles: "verified",
+    review_decision: "verified",
   }),
 );

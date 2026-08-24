@@ -1,0 +1,81 @@
+{
+  "label": "live Nemotron calibration: monthly inference allowance",
+  "source_text": "  * [Fixture Models](https://example.test/models) - Free hosted model inference API with 1,000 requests per month.",
+  "candidate": {
+    "contract_version": "0.1.0",
+    "vocabulary_version": "0.1.0",
+    "source_snapshot_id": "srcsnap_3aa7b9251145df242ae2e8e3",
+    "observed_at": "2026-08-24T22:48:00Z",
+    "evidence_spans": [
+      {
+        "id": "ev_1",
+        "quote": "Free hosted model inference API with 1,000 requests per month."
+      }
+    ],
+    "product": {
+      "source_name": "Fixture Models",
+      "proposed_canonical_name": null,
+      "description": "Free hosted model inference API with 1,000 requests per month.",
+      "organization_roles": [],
+      "links": [],
+      "facets": [],
+      "claimed_outcomes": []
+    },
+    "opportunities": [
+      {
+        "local_key": "opportunity_1",
+        "variant_label": "1,000 requests per month",
+        "plan_label": null,
+        "availability": {
+          "value": "public",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_1"]
+          }
+        },
+        "effective_period": null,
+        "entitlements": [
+          {
+            "key": "monthly_requests",
+            "kind": "included_usage",
+            "label": "1,000 requests per month",
+            "quantity": {
+              "value": 1000,
+              "comparator": "exact",
+              "source_unit": "request",
+              "normalized_unit": "request"
+            },
+            "cadence": {
+              "interval": 1,
+              "unit": "month",
+              "alignment": "calendar"
+            },
+            "duration": {
+              "value": 1,
+              "unit": "month"
+            },
+            "monetary_value": null,
+            "maximum_value": null,
+            "percentage_value": null,
+            "cost_scope": "usage",
+            "applies_to": [
+              {
+                "target_type": "product",
+                "source_label": "Fixture Models"
+              }
+            ],
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_1"]
+            }
+          }
+        ],
+        "constraints": [],
+        "conditions": [],
+        "ambiguities": [],
+        "links": []
+      }
+    ],
+    "possible_canonical_matches": []
+  }
+}

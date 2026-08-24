@@ -41,6 +41,8 @@ The process reads `OPENROUTER_API_KEY` or `NVIDIA_NIM_API_KEY`. It refuses a pai
 
 Each provider attempt is written immediately to the state database. A JSON trace also records raw output, reasoning when supplied, normalization actions, validation failures, token usage, identity decisions, and final disposition.
 
+Review decisions are recorded separately as `accepted`, `rejected`, or `deferred`; processing a review does not rewrite the immutable candidate revision. Rejected live outputs may be retained as calibration fixtures so their failure modes remain covered by tests.
+
 ## State layout
 
 The default `var/v0.1` directory contains:
