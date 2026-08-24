@@ -465,6 +465,17 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Do not multiply the credit across scopes: “AI and search” describes where one USD 5 benefit applies, not two separate USD 5 benefits.
 - Unknowns: Whether the AI/search credit is a shared balance; included LLMs/search services/APIs; database allowance; account/card requirements; and geography.
 
+### Composio
+
+- Decision status: Defer removal; retain the product as agent integration/infrastructure while gating its opportunity from recommendation.
+- Capabilities: Agent-tool integration, external-service connectivity, LLM-application integrations, and agent infrastructure. Do not infer hosted model inference.
+- Candidate outcome: Connect an AI agent or LLM application to external tools and services.
+- Description: “Integration platform connecting AI agents and LLM applications to more than 200 external tools.”
+- Supported-tool fact: Normalize source text “over 200+” to quantity `200` with comparator `at_least`.
+- Offer problem: The supplied text contains no savings benefit, limits, or requirements.
+- Other unknowns: Hosted/self-hosted delivery, open-source availability, free-plan integration scope, execution/authentication limits, and account/card requirements.
+- Harness consequence: Derive a research job and apply the savings-evidence publication gate.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
