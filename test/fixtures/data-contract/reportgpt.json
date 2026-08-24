@@ -1,0 +1,133 @@
+{
+  "source_text": "[ReportGPT](https://ReportGPT.app) - AI Powered Writing Assistant. The entire platform is free as long as you bring your own API key.",
+  "candidate": {
+    "contract_version": "0.1.0",
+    "vocabulary_version": "0.1.0",
+    "source_snapshot_id": "srcsnap_reportgpt_001",
+    "observed_at": "2026-08-24T20:00:00Z",
+    "evidence_spans": [
+      {
+        "id": "ev_name",
+        "quote": "ReportGPT"
+      },
+      {
+        "id": "ev_function",
+        "quote": "AI Powered Writing Assistant"
+      },
+      {
+        "id": "ev_offer",
+        "quote": "The entire platform is free as long as you bring your own API key"
+      },
+      {
+        "id": "ev_url",
+        "quote": "https://ReportGPT.app"
+      }
+    ],
+    "product": {
+      "source_name": "ReportGPT",
+      "proposed_canonical_name": {
+        "text": "ReportGPT",
+        "support": {
+          "basis": "explicit",
+          "evidence_ids": ["ev_name"]
+        }
+      },
+      "description": {
+        "text": "AI-powered writing assistant.",
+        "support": {
+          "basis": "explicit",
+          "evidence_ids": ["ev_function"]
+        }
+      },
+      "organization_roles": [],
+      "links": [
+        {
+          "role": "canonical_product",
+          "url": "https://ReportGPT.app",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_url"]
+          }
+        }
+      ],
+      "facets": [
+        {
+          "namespace": "capability",
+          "concept_id": "ai_assisted_writing",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_function"]
+          }
+        }
+      ],
+      "claimed_outcomes": []
+    },
+    "opportunities": [
+      {
+        "local_key": "opp_byo_key",
+        "variant_label": {
+          "text": "bring your own API key",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_offer"]
+          }
+        },
+        "plan_label": null,
+        "availability": {
+          "value": "public",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_offer"]
+          }
+        },
+        "entitlements": [
+          {
+            "key": "ent_platform",
+            "kind": "no_cost_access",
+            "label": "Entire platform is free",
+            "cost_scope": "platform_fee",
+            "applies_to": [
+              {
+                "target_type": "product",
+                "source_label": "entire platform"
+              }
+            ],
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_offer"]
+            }
+          }
+        ],
+        "constraints": [],
+        "conditions": [
+          {
+            "key": "cond_api_key",
+            "family": "external_credential",
+            "credential_type": "api_key",
+            "required": true,
+            "target_key": "ent_platform",
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_offer"]
+            }
+          }
+        ],
+        "ambiguities": [
+          {
+            "key": "amb_provider_cost",
+            "target_key": "ent_platform",
+            "field": "pricing",
+            "reason": "ambiguous",
+            "note": "The platform fee is waived, but the supplied text does not establish the cost of usage through the user-provided API key.",
+            "support": {
+              "basis": "inferred",
+              "evidence_ids": ["ev_offer"]
+            }
+          }
+        ],
+        "links": []
+      }
+    ],
+    "possible_canonical_matches": []
+  }
+}

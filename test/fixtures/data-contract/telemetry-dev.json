@@ -1,0 +1,231 @@
+{
+  "source_text": "[telemetry.dev](https://telemetry.dev) - Observability for AI/LLM apps built on OpenTelemetry. Traces model calls and tool steps with tokens, cost, latency and errors; send OTLP over HTTP from any language or use the TypeScript SDKs. Free plan includes 10,000 spans/month, 7-day retention, 1 project and 2 seats, no credit card.",
+  "candidate": {
+    "contract_version": "0.1.0",
+    "vocabulary_version": "0.1.0",
+    "source_snapshot_id": "srcsnap_telemetry_dev_001",
+    "observed_at": "2026-08-24T20:00:00Z",
+    "evidence_spans": [
+      {
+        "id": "ev_name",
+        "quote": "telemetry.dev"
+      },
+      {
+        "id": "ev_function",
+        "quote": "Observability for AI/LLM apps built on OpenTelemetry. Traces model calls and tool steps with tokens, cost, latency and errors"
+      },
+      {
+        "id": "ev_interfaces",
+        "quote": "send OTLP over HTTP from any language or use the TypeScript SDKs"
+      },
+      {
+        "id": "ev_plan",
+        "quote": "Free plan includes 10,000 spans/month, 7-day retention, 1 project and 2 seats, no credit card"
+      },
+      {
+        "id": "ev_url",
+        "quote": "https://telemetry.dev"
+      }
+    ],
+    "product": {
+      "source_name": "telemetry.dev",
+      "proposed_canonical_name": {
+        "text": "telemetry.dev",
+        "support": {
+          "basis": "explicit",
+          "evidence_ids": ["ev_name"]
+        }
+      },
+      "description": {
+        "text": "OpenTelemetry-based observability service for tracing model calls and tool steps.",
+        "support": {
+          "basis": "inferred",
+          "evidence_ids": ["ev_function"]
+        }
+      },
+      "organization_roles": [],
+      "links": [
+        {
+          "role": "canonical_product",
+          "url": "https://telemetry.dev",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_url"]
+          }
+        }
+      ],
+      "facets": [
+        {
+          "namespace": "capability",
+          "concept_id": "ai_observability",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_function"]
+          }
+        },
+        {
+          "namespace": "operation",
+          "concept_id": "trace",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_function"]
+          }
+        },
+        {
+          "namespace": "interface",
+          "concept_id": "otlp_http",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_interfaces"]
+          }
+        },
+        {
+          "namespace": "interface",
+          "concept_id": "typescript_sdk",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_interfaces"]
+          }
+        },
+        {
+          "namespace": "monitoring_subject",
+          "concept_id": "model_call",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_function"]
+          }
+        },
+        {
+          "namespace": "monitoring_subject",
+          "concept_id": "tool_step",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_function"]
+          }
+        }
+      ],
+      "claimed_outcomes": []
+    },
+    "opportunities": [
+      {
+        "local_key": "opp_free_plan",
+        "variant_label": {
+          "text": "hosted free plan",
+          "support": {
+            "basis": "inferred",
+            "evidence_ids": ["ev_plan", "ev_url"]
+          }
+        },
+        "plan_label": {
+          "text": "Free plan",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_plan"]
+          }
+        },
+        "availability": {
+          "value": "public",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_plan"]
+          }
+        },
+        "entitlements": [
+          {
+            "key": "ent_spans",
+            "kind": "included_usage",
+            "label": "10,000 spans per month",
+            "quantity": {
+              "value": 10000,
+              "comparator": "exact",
+              "source_unit": "spans",
+              "normalized_unit": "span"
+            },
+            "cadence": {
+              "interval": 1,
+              "unit": "month",
+              "alignment": "unknown"
+            },
+            "cost_scope": "usage",
+            "applies_to": [
+              {
+                "target_type": "capability",
+                "source_label": "observability"
+              }
+            ],
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_plan"]
+            }
+          },
+          {
+            "key": "ent_project",
+            "kind": "included_resource",
+            "label": "1 project",
+            "quantity": {
+              "value": 1,
+              "comparator": "exact",
+              "source_unit": "project",
+              "normalized_unit": "project"
+            },
+            "applies_to": [],
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_plan"]
+            }
+          },
+          {
+            "key": "ent_seats",
+            "kind": "included_resource",
+            "label": "2 seats",
+            "quantity": {
+              "value": 2,
+              "comparator": "exact",
+              "source_unit": "seats",
+              "normalized_unit": "seat"
+            },
+            "applies_to": [],
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_plan"]
+            }
+          }
+        ],
+        "constraints": [
+          {
+            "key": "con_retention",
+            "kind": "retention",
+            "label": "7-day retention",
+            "target_key": "ent_spans",
+            "quantity": {
+              "value": 7,
+              "comparator": "exact",
+              "source_unit": "days",
+              "normalized_unit": "day"
+            },
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_plan"]
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "key": "cond_card",
+            "family": "boolean_requirement",
+            "kind": "credit_card",
+            "required": false,
+            "target_key": "opportunity",
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_plan"]
+            }
+          }
+        ],
+        "ambiguities": [],
+        "links": []
+      }
+    ],
+    "possible_canonical_matches": []
+  }
+}

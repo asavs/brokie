@@ -53,6 +53,8 @@ The runner refuses to operate without the selected provider's key and never fall
 
 The `develop/v0.1.0` line adds a read-only search API, immutable refresh snapshots, material change detection, a persistent review queue, and lock-protected unattended Linux jobs. Hermes and NemoClaw remain candidates for the later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
 
+The v0.1 catalog architecture is specified by the [typed data contract](docs/DATA-CONTRACT.md), its [Draft 2020-12 candidate schema](schemas/catalog-candidate.schema.json), a [versioned controlled vocabulary](schemas/vocabularies.v0.1.json), and an immutable [SQLite revision store](packages/catalog/schema.v0.1.sql). Librarian output is only a proposal: deterministic validation owns evidence integrity, scoped references, duplicate economics, indexing, and publication.
+
 See [the product brief](docs/PRODUCT_BRIEF.md) and [v0.0.1 experiment report](docs/V0.0.1-EXPERIMENT.md).
 
 For current Linux commands and the eventual service shape, see [WSL development](docs/WSL-DEVELOPMENT.md).

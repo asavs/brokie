@@ -1,0 +1,174 @@
+{
+  "source_text": "Category: AI & Automation\nBrand/Product: VEO Google\nDescription: AI video with real-world physics and creative freedom\nMonetary Detail: $300 Gemini API credit Save up to $300\nApplication Link: https://deals.bags.fm/veo-google#veo-google-promocode-300\nPlatform/Source: bags.fm\nEstimated Value: $300\nEligibility Notes: Startup verification",
+  "candidate": {
+    "contract_version": "0.1.0",
+    "vocabulary_version": "0.1.0",
+    "source_snapshot_id": "srcsnap_veo_google_001",
+    "observed_at": "2026-08-24T20:00:00Z",
+    "evidence_spans": [
+      {
+        "id": "ev_name",
+        "quote": "VEO Google"
+      },
+      {
+        "id": "ev_function",
+        "quote": "AI video with real-world physics and creative freedom"
+      },
+      {
+        "id": "ev_credit",
+        "quote": "$300 Gemini API credit Save up to $300"
+      },
+      {
+        "id": "ev_eligibility",
+        "quote": "Startup verification"
+      },
+      {
+        "id": "ev_offer_url",
+        "quote": "https://deals.bags.fm/veo-google#veo-google-promocode-300"
+      },
+      {
+        "id": "ev_distributor",
+        "quote": "bags.fm"
+      }
+    ],
+    "product": {
+      "source_name": "VEO Google",
+      "proposed_canonical_name": null,
+      "description": {
+        "text": "AI video generation product.",
+        "support": {
+          "basis": "inferred",
+          "evidence_ids": ["ev_function"]
+        }
+      },
+      "organization_roles": [
+        {
+          "organization_name": "bags.fm",
+          "role": "distributor",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_distributor"]
+          }
+        }
+      ],
+      "links": [],
+      "facets": [
+        {
+          "namespace": "capability",
+          "concept_id": "video_generation",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_function"]
+          }
+        },
+        {
+          "namespace": "capability",
+          "concept_id": "model_api",
+          "support": {
+            "basis": "inferred",
+            "evidence_ids": ["ev_credit"]
+          }
+        },
+        {
+          "namespace": "capability",
+          "concept_id": "model_inference",
+          "support": {
+            "basis": "inferred",
+            "evidence_ids": ["ev_function", "ev_credit"]
+          }
+        }
+      ],
+      "claimed_outcomes": [
+        {
+          "text": "AI video with real-world physics and creative freedom",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_function"]
+          }
+        }
+      ]
+    },
+    "opportunities": [
+      {
+        "local_key": "opp_startup_credit",
+        "variant_label": {
+          "text": "startup API credit",
+          "support": {
+            "basis": "inferred",
+            "evidence_ids": ["ev_credit", "ev_eligibility"]
+          }
+        },
+        "plan_label": null,
+        "availability": {
+          "value": "eligibility_gated",
+          "support": {
+            "basis": "explicit",
+            "evidence_ids": ["ev_eligibility"]
+          }
+        },
+        "entitlements": [
+          {
+            "key": "ent_gemini_credit",
+            "kind": "monetary_credit",
+            "label": "$300 Gemini API credit",
+            "monetary_value": {
+              "amount": 300,
+              "currency": "USD",
+              "comparator": "exact"
+            },
+            "cost_scope": "provider_usage",
+            "applies_to": [
+              {
+                "target_type": "service",
+                "source_label": "Gemini API"
+              }
+            ],
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_credit"]
+            }
+          }
+        ],
+        "constraints": [],
+        "conditions": [
+          {
+            "key": "cond_startup",
+            "family": "audience",
+            "audiences": ["startup"],
+            "source_label": "Startup verification",
+            "verification_required": true,
+            "target_key": "opportunity",
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_eligibility"]
+            }
+          }
+        ],
+        "ambiguities": [
+          {
+            "key": "amb_product_credit_relationship",
+            "target_key": "product",
+            "field": "relationship",
+            "reason": "ambiguous",
+            "note": "The supplied record pairs a video product labeled VEO Google with a Gemini API credit but does not define their applicability relationship.",
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_name", "ev_function", "ev_credit"]
+            }
+          }
+        ],
+        "links": [
+          {
+            "role": "redemption",
+            "url": "https://deals.bags.fm/veo-google#veo-google-promocode-300",
+            "support": {
+              "basis": "explicit",
+              "evidence_ids": ["ev_offer_url"]
+            }
+          }
+        ]
+      }
+    ],
+    "possible_canonical_matches": []
+  }
+}

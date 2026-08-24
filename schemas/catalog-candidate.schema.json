@@ -1,0 +1,661 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brokie.dev/schemas/catalog-candidate.schema.json",
+  "title": "Brokie librarian catalog candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "vocabulary_version",
+    "source_snapshot_id",
+    "observed_at",
+    "evidence_spans",
+    "product",
+    "opportunities",
+    "possible_canonical_matches"
+  ],
+  "properties": {
+    "contract_version": { "const": "0.1.0" },
+    "vocabulary_version": { "const": "0.1.0" },
+    "source_snapshot_id": { "$ref": "#/$defs/sourceSnapshotId" },
+    "observed_at": { "$ref": "#/$defs/timestamp" },
+    "evidence_spans": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceSpan" }
+    },
+    "product": { "$ref": "#/$defs/productCandidate" },
+    "opportunities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/opportunityCandidate" }
+    },
+    "possible_canonical_matches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/canonicalMatch" }
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+    },
+    "localKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,63}$"
+    },
+    "sourceSnapshotId": {
+      "type": "string",
+      "pattern": "^srcsnap_[a-z0-9_]{4,96}$"
+    },
+    "evidenceId": {
+      "type": "string",
+      "pattern": "^ev_[a-z0-9_]{1,63}$"
+    },
+    "support": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis", "evidence_ids"],
+      "properties": {
+        "basis": {
+          "type": "string",
+          "enum": ["explicit", "inferred"]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/evidenceId" }
+        }
+      }
+    },
+    "evidenceSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "quote"],
+      "properties": {
+        "id": { "$ref": "#/$defs/evidenceId" },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "supportedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "support"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "facet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "concept_id", "support"],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "enum": [
+            "capability",
+            "operation",
+            "interface",
+            "input_modality",
+            "output_modality",
+            "execution_location",
+            "accelerator",
+            "operability",
+            "monitoring_subject"
+          ]
+        },
+        "concept_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "organizationRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["organization_name", "role", "support"],
+      "properties": {
+        "organization_name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "role": {
+          "type": "string",
+          "enum": ["owner", "operator", "issuer", "sponsor", "distributor", "verifier"]
+        },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "url", "support"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "canonical_product",
+            "documentation",
+            "pricing",
+            "terms",
+            "source",
+            "application",
+            "redemption",
+            "repository"
+          ]
+        },
+        "url": { "type": "string", "pattern": "^https?://[^\\s]+$", "maxLength": 2048 },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "productCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_name",
+        "proposed_canonical_name",
+        "description",
+        "organization_roles",
+        "links",
+        "facets",
+        "claimed_outcomes"
+      ],
+      "properties": {
+        "source_name": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "proposed_canonical_name": {
+          "oneOf": [
+            { "$ref": "#/$defs/supportedText" },
+            { "type": "null" }
+          ]
+        },
+        "description": {
+          "oneOf": [
+            { "$ref": "#/$defs/supportedText" },
+            { "type": "null" }
+          ]
+        },
+        "organization_roles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/organizationRole" }
+        },
+        "links": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/link" }
+        },
+        "facets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/facet" }
+        },
+        "claimed_outcomes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/supportedText" }
+        }
+      }
+    },
+    "quantity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comparator", "source_unit", "normalized_unit"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0 },
+        "comparator": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "at_least",
+            "at_most",
+            "up_to",
+            "more_than",
+            "less_than",
+            "approximately",
+            "unlimited",
+            "unknown"
+          ]
+        },
+        "source_unit": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "normalized_unit": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "comparator": { "enum": ["unlimited", "unknown"] }
+            },
+            "required": ["comparator"]
+          },
+          "then": { "properties": { "value": false } },
+          "else": { "properties": { "value": true }, "required": ["value"] }
+        }
+      ]
+    },
+    "cadence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interval", "unit", "alignment"],
+      "properties": {
+        "interval": { "type": "integer", "minimum": 1 },
+        "unit": {
+          "type": "string",
+          "enum": ["minute", "hour", "day", "week", "month", "year"]
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["calendar", "rolling", "unknown"]
+        }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": {
+          "type": "string",
+          "enum": ["minute", "hour", "day", "week", "month", "year"]
+        }
+      }
+    },
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency", "comparator"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "comparator": {
+          "type": "string",
+          "enum": ["exact", "up_to", "at_least", "approximately"]
+        }
+      }
+    },
+    "percentage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "comparator"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+        "comparator": {
+          "type": "string",
+          "enum": ["exact", "up_to", "at_least", "approximately"]
+        }
+      }
+    },
+    "applicabilityTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_type", "source_label"],
+      "properties": {
+        "target_type": {
+          "type": "string",
+          "enum": ["product", "capability", "feature", "service", "model", "plan", "entitlement", "other"]
+        },
+        "source_label": { "type": "string", "minLength": 1, "maxLength": 300 }
+      }
+    },
+    "entitlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "kind", "label", "applies_to", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "no_cost_access",
+            "included_usage",
+            "included_resource",
+            "included_capacity",
+            "included_feature",
+            "monetary_credit",
+            "percentage_discount",
+            "fixed_discount",
+            "waived_fee",
+            "trial_access",
+            "grant"
+          ]
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "quantity": { "$ref": "#/$defs/quantity" },
+        "cadence": { "$ref": "#/$defs/cadence" },
+        "duration": { "$ref": "#/$defs/duration" },
+        "monetary_value": { "$ref": "#/$defs/money" },
+        "maximum_value": { "$ref": "#/$defs/money" },
+        "percentage_value": { "$ref": "#/$defs/percentage" },
+        "cost_scope": {
+          "type": "string",
+          "enum": [
+            "platform_fee",
+            "subscription_fee",
+            "software_license",
+            "provider_usage",
+            "infrastructure",
+            "usage",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "applies_to": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/applicabilityTarget" }
+        },
+        "support": { "$ref": "#/$defs/support" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": { "enum": ["included_usage", "included_resource", "included_capacity"] }
+            },
+            "required": ["kind"]
+          },
+          "then": { "properties": { "quantity": true }, "required": ["quantity"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "enum": ["monetary_credit", "fixed_discount"] } },
+            "required": ["kind"]
+          },
+          "then": { "properties": { "monetary_value": true }, "required": ["monetary_value"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "percentage_discount" } },
+            "required": ["kind"]
+          },
+          "then": { "properties": { "percentage_value": true }, "required": ["percentage_value"] },
+          "else": { "properties": { "percentage_value": false } }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "grant" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "anyOf": [
+              { "properties": { "monetary_value": true }, "required": ["monetary_value"] },
+              { "properties": { "quantity": true }, "required": ["quantity"] }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "no_cost_access", "included_usage", "monetary_credit",
+                  "percentage_discount", "fixed_discount", "waived_fee", "trial_access"
+                ]
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": { "properties": { "cost_scope": true }, "required": ["cost_scope"] }
+        }
+      ]
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "kind", "label", "target_key", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "maximum_quantity",
+            "minimum_quantity",
+            "rate_limit",
+            "retention",
+            "capacity",
+            "maximum_item_size",
+            "paid_addon",
+            "excluded_feature",
+            "other"
+          ]
+        },
+        "other_kind": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "target_key": {
+          "anyOf": [
+            { "$ref": "#/$defs/localKey" },
+            { "const": "opportunity" }
+          ]
+        },
+        "quantity": { "$ref": "#/$defs/quantity" },
+        "cadence": { "$ref": "#/$defs/cadence" },
+        "support": { "$ref": "#/$defs/support" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "other" } }, "required": ["kind"] },
+          "then": { "properties": { "other_kind": true }, "required": ["other_kind"] },
+          "else": { "properties": { "other_kind": false } }
+        }
+      ]
+    },
+    "booleanCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "family", "kind", "required", "target_key", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "family": { "const": "boolean_requirement" },
+        "kind": {
+          "type": "string",
+          "enum": ["account", "login", "credit_card", "application", "approval", "installation", "repository", "build_step"]
+        },
+        "required": { "type": "boolean" },
+        "target_key": {
+          "anyOf": [
+            { "$ref": "#/$defs/localKey" },
+            { "const": "opportunity" }
+          ]
+        },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "credentialCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "family", "credential_type", "required", "target_key", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "family": { "const": "external_credential" },
+        "credential_type": {
+          "type": "string",
+          "enum": ["api_key", "model_provider_key", "provider_account", "github_app", "mcp_client", "other"]
+        },
+        "required": { "type": "boolean" },
+        "target_key": {
+          "anyOf": [
+            { "$ref": "#/$defs/localKey" },
+            { "const": "opportunity" }
+          ]
+        },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "audienceCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "family", "audiences", "source_label", "verification_required", "target_key", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "family": { "const": "audience" },
+        "audiences": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["startup", "student", "individual", "indie_developer", "small_team", "open_source_project", "nonprofit", "academic", "other"]
+          }
+        },
+        "source_label": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "verification_required": { "type": ["boolean", "null"] },
+        "target_key": { "const": "opportunity" },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "geographyCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "family", "mode", "regions", "target_key", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "family": { "const": "geography" },
+        "mode": { "type": "string", "enum": ["included", "excluded", "unknown"] },
+        "regions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "target_key": { "const": "opportunity" },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "otherCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "family", "normalized_key", "state", "source_value", "target_key", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "family": { "const": "other" },
+        "normalized_key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+        "state": { "type": "string", "enum": ["required", "not_required", "conditional", "unknown"] },
+        "source_value": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "target_key": {
+          "anyOf": [
+            { "$ref": "#/$defs/localKey" },
+            { "const": "opportunity" }
+          ]
+        },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "condition": {
+      "oneOf": [
+        { "$ref": "#/$defs/booleanCondition" },
+        { "$ref": "#/$defs/credentialCondition" },
+        { "$ref": "#/$defs/audienceCondition" },
+        { "$ref": "#/$defs/geographyCondition" },
+        { "$ref": "#/$defs/otherCondition" }
+      ]
+    },
+    "ambiguity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "target_key", "field", "reason", "note", "support"],
+      "properties": {
+        "key": { "$ref": "#/$defs/localKey" },
+        "target_key": {
+          "anyOf": [
+            { "$ref": "#/$defs/localKey" },
+            { "const": "product" },
+            { "const": "opportunity" }
+          ]
+        },
+        "field": {
+          "type": "string",
+          "enum": ["scope", "cadence", "duration", "quantity", "unit", "cost_scope", "applicability", "eligibility", "requirement", "identity", "relationship", "pricing", "other"]
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["ambiguous", "contradictory", "suspected_stale"]
+        },
+        "note": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    },
+    "opportunityCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local_key",
+        "variant_label",
+        "plan_label",
+        "availability",
+        "entitlements",
+        "constraints",
+        "conditions",
+        "ambiguities",
+        "links"
+      ],
+      "properties": {
+        "local_key": { "$ref": "#/$defs/localKey" },
+        "variant_label": {
+          "oneOf": [
+            { "$ref": "#/$defs/supportedText" },
+            { "type": "null" }
+          ]
+        },
+        "plan_label": {
+          "oneOf": [
+            { "$ref": "#/$defs/supportedText" },
+            { "type": "null" }
+          ]
+        },
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "support"],
+          "properties": {
+            "value": {
+              "type": "string",
+              "enum": ["public", "eligibility_gated", "application_required", "invite_only", "unknown"]
+            },
+            "support": { "$ref": "#/$defs/support" }
+          }
+        },
+        "effective_period": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to", "support"],
+          "properties": {
+            "from": {
+              "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }]
+            },
+            "to": {
+              "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }]
+            },
+            "support": { "$ref": "#/$defs/support" }
+          }
+        },
+        "entitlements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/entitlement" }
+        },
+        "constraints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/constraint" }
+        },
+        "conditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "ambiguities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ambiguity" }
+        },
+        "links": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/link" }
+        }
+      }
+    },
+    "canonicalMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_name", "candidate_url", "support"],
+      "properties": {
+        "candidate_name": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "candidate_url": {
+          "oneOf": [
+            { "type": "string", "pattern": "^https?://[^\\s]+$", "maxLength": 2048 },
+            { "type": "null" }
+          ]
+        },
+        "support": { "$ref": "#/$defs/support" }
+      }
+    }
+  }
+}
