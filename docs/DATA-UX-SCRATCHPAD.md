@@ -65,20 +65,16 @@ The librarian emits assertions and unknowns. The harness decides which unknowns 
 
 ### Offer/access terms
 
-Candidate access types:
+Do not force the whole opportunity into one overlapping access-type enum. Describe it with orthogonal fields:
 
-- `completely_free`
-- `free_tier`
-- `free_trial`
-- `usage_credit`
-- `percentage_discount`
-- `fixed_discount`
-- `grant`
-- `open_source`
-- `bring_your_own_provider`
-- `unknown`
+- delivery mode: hosted, self-hosted, downloadable, hybrid, or unknown;
+- availability: public, eligibility-gated, application-required, invite-only, or unknown;
+- named plan and whether the source explicitly calls it a free tier or trial;
+- one or more typed benefits: no-cost access, included usage, monetary credit, percentage discount, fixed discount, waived fee, trial access, or grant;
+- license and distribution terms when software is available for self-hosting;
+- requirements and eligibility.
 
-Offer terms should support:
+Each benefit should support:
 
 - included quantity and unit;
 - reset period, if stated;
@@ -91,7 +87,7 @@ Offer terms should support:
 - exact evidence for every field;
 - `unknown` rather than silently treating missing restrictions as absent.
 
-Example: Arize AI is `free_tier`, limited to `2 monitored_models`, with period, expiry, card requirement, and eligibility currently unknown.
+Example: Arize AI has a source-explicit free tier whose benefit is no-cost monitoring of up to `2 monitored_models`, with period, expiry, card requirement, and eligibility currently unknown.
 
 A product may expose multiple independent savings opportunities. For example, a hosted free tier and an open-source self-hosting option must be separate opportunity records so hosted quotas are not applied to self-hosting and “open source” does not imply free infrastructure.
 
@@ -334,6 +330,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Hosted explicit unknown: The scope of a “credit” is ambiguous and may produce a harness-derived research job.
 - Open-source opportunity: MIT-licensed, self-hostable software. Infrastructure cost is unknown and must not be presented as free hosting.
 - Modeling consequence: Keep the hosted free tier and open-source/self-hosting option as separate opportunities under one product.
+
+### MediaWorkbench.ai
+
+- Decision status: Needs taxonomy and offer-model revision; do not accept the candidate unchanged.
+- Capabilities: Hosted model inference, code generation, image generation, and research assistance.
+- Restore `image-generation`: The supplied text explicitly says image creation.
+- Candidate outcomes: Generate code; create images; conduct deep research; use hosted AI models.
+- Description: “AI workspace providing access to Azure OpenAI, DeepSeek, and Gemini models for code generation, deep research, and image creation.”
+- Supported services: Azure OpenAI, DeepSeek, and Google Gemini.
+- Benefit: Included usage of 100,000 words. Do not create a separate `free_allowance` opportunity type; included usage is a benefit within an opportunity whose plan form is currently unknown.
+- Explicit unknowns: Reset period; input/output/combined accounting; whether image creation consumes the word-denominated allowance; account/card requirements; geography; and eligibility.
+- Product-boundary rule: Keep multiple capabilities or offerings under one product unless evidence establishes distinct named subproducts, separately scoped benefits, or different requirements. Benefit records can carry an `applies_to` scope; leave it unknown when the source does not say.
 
 ## Open design questions
 
