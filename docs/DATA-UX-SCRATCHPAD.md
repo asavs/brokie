@@ -343,6 +343,16 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Explicit unknowns: Reset period; input/output/combined accounting; whether image creation consumes the word-denominated allowance; account/card requirements; geography; and eligibility.
 - Product-boundary rule: Keep multiple capabilities or offerings under one product unless evidence establishes distinct named subproducts, separately scoped benefits, or different requirements. Benefit records can carry an `applies_to` scope; leave it unknown when the source does not say.
 
+### OpenRouter
+
+- Decision: Accept the candidate trusted classification of hosted model inference.
+- Keep model routing as an inferred, unverified assertion because the supplied text and product identity suggest model breadth but do not explicitly state gateway, routing, unified API, or model switching.
+- Candidate outcome: Use a hosted AI model for free. Accessing multiple models through one service remains inferred.
+- Description: “Hosted model service offering access to a catalog of free and paid AI models.”
+- No-cost benefit applies to the source-listed DeepSeek R1, DeepSeek V3, Llama, and Moonshot AI models, subject to rate limits of unknown quantity.
+- Claude, OpenAI, Grok, Gemini, and Nova are mentioned as paid catalog options and are not part of the no-cost benefit.
+- Unknowns: Rate-limit quantities, interface type, account/card requirements, geography, and eligibility.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
