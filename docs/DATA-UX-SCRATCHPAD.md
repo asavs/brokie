@@ -571,6 +571,16 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Input sources/integrations include uploads, voice notes, YouTube, Instagram, WhatsApp, Telegram, Google Drive, Dropbox, Box, and OneDrive; mobile, desktop, and Chromebook apps are mentioned.
 - Unknowns: Duration/file-size/format limits, summary limits, per-integration quotas, retention, export, languages, and card requirement.
 
+### What Is My IP
+
+- Decision: Accept removal from inference/GPU; retain in broad Brokie under networking utilities and generic APIs.
+- Negative anchors: A generic service API is not a model API, and the letters `tpu` inside “output” do not establish accelerator compute.
+- Capabilities: Public IPv4/IPv6 lookup, request/network metadata, generic API, multiple response formats, and automation/scripting integration.
+- Candidate outcomes: Check a public IP; retrieve it programmatically; inspect request data for automation or network troubleshooting.
+- Description: “API service for checking a request's public IPv4 or IPv6 address and related network data.”
+- Benefit: Source-stated no-cost access to the IP lookup service; do not infer unlimited use.
+- Unknowns: Request quotas/rate limits, authentication/account requirements, formats, metadata fields, commercial-use restrictions, geography, retention, and availability guarantees.
+
 ## Open design questions
 
 - How narrow should `agent-platform` be?
