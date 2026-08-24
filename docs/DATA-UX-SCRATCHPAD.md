@@ -93,6 +93,8 @@ Offer terms should support:
 
 Example: Arize AI is `free_tier`, limited to `2 monitored_models`, with period, expiry, card requirement, and eligibility currently unknown.
 
+A product may expose multiple independent savings opportunities. For example, a hosted free tier and an open-source self-hosting option must be separate opportunity records so hosted quotas are not applied to self-hosting and “open source” does not imply free infrastructure.
+
 ### Operations and modalities
 
 Generation must not be conflated with transformation or analysis.
@@ -320,6 +322,18 @@ The contract keeps source-attributed `claimed_outcomes` separate from evidence-g
 - Explicit unknown: `allowance.scope` is ambiguous because the supplied evidence does not say whether “requests” meters gateway model calls, monitoring/logging events, or another operation.
 - The harness should derive a research job asking what the allowance meters and whether third-party inference charges are separate.
 - Other unknowns: Account/card requirements, geography, rate limits, and eligibility.
+
+### Latitude
+
+- Decision status: Needs taxonomy and opportunity-model revision; do not accept either existing tag set unchanged.
+- Capabilities: AI observability, AI evaluation, tracing, and monitoring.
+- Remove `agent-platform`: Tracing or evaluating production agents is not evidence that the product builds agents.
+- Candidate outcomes: Monitor an AI system in production; trace an AI application or agent; evaluate an AI system.
+- Description: “LLM observability and evaluation platform for tracing, monitoring, and evaluating production AI agents.”
+- Hosted opportunity: Free Starter plan; 20,000 credits per month; 30-day data-retention window; unlimited seats.
+- Hosted explicit unknown: The scope of a “credit” is ambiguous and may produce a harness-derived research job.
+- Open-source opportunity: MIT-licensed, self-hostable software. Infrastructure cost is unknown and must not be presented as free hosting.
+- Modeling consequence: Keep the hosted free tier and open-source/self-hosting option as separate opportunities under one product.
 
 ## Open design questions
 
