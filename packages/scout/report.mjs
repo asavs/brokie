@@ -4,7 +4,9 @@ import { ArtifactStore, PacketStore } from "./store.mjs";
 import { createPacketValidator } from "./validate-packet.mjs";
 
 function json(value, fallback) { return value ? JSON.parse(value) : fallback; }
+function safeLocator(locator) { try { const url = new URL(locator); if (url.username || url.password) { url.username = ""; url.password = ""; } return url.href; } catch { return locator; } }
 export function generateDogfoodReport({ ledger, runId, stateRoot, outputPath, command }) {
+  if (/[\r\n]|```|(?:api[_-]?key|authorization|bearer|password|token)\s*=/i.test(command)) throw new Error("unsafe reproduction command");
   const run = ledger.run(runId); if (!run) throw new Error(`unknown Scout run: ${runId}`);
   const packetRows = ledger.db.prepare("SELECT * FROM scout_packets WHERE run_id=? ORDER BY ordinal").all(runId);
   const artifactStore = new ArtifactStore(stateRoot), packetStore = new PacketStore(stateRoot, createPacketValidator(artifactStore));
@@ -14,12 +16,12 @@ export function generateDogfoodReport({ ledger, runId, stateRoot, outputPath, co
   const seed = json(run.seed_json, {}), configured = json(run.budget_json, {}), consumed = json(run.counters_json, {});
   const files = [...new Set(events.filter((e) => e.type === "tool" && e.value.name === "file.read").map((e) => e.value.input.relative_path))];
   const gitInspection = events.find((e) => e.type === "tool" && e.value.name === "git.inspect")?.value.output;
-  const followed = packets.flatMap(({ packet }) => packet.followed_pages.map((page) => ({ label: packet.subject.source_label, locator: page.requested_locator, final: page.final_locator, status: page.status, failure: page.failure?.code ?? "none" })));
-  const skipped = packets.flatMap(({ packet }) => packet.skipped_links.map((item) => ({ label: packet.subject.source_label, locator: item.link.resolved_destination ?? item.link.raw_destination, reason: item.reason_code })));
+  const followed = packets.flatMap(({ packet }) => packet.followed_pages.map((page) => ({ label: packet.subject.source_label, locator: safeLocator(page.requested_locator), final: safeLocator(page.final_locator), status: page.status, failure: page.failure?.code ?? "none" })));
+  const skipped = packets.flatMap(({ packet }) => packet.skipped_links.map((item) => ({ label: packet.subject.source_label, locator: safeLocator(item.link.resolved_destination ?? item.link.raw_destination), reason: item.reason_code })));
   const uncertainties = [...new Set(packets.flatMap(({ packet }) => [...packet.uncertainties.map((u) => u.observation), ...packet.investigation.unresolved_questions]))];
   const resolved = [...new Set(attempts.map((x) => x.resolved_model).filter(Boolean))];
   const terminalReasons = json(run.terminal_reason_codes_json, []);
-  const rows = packets.map(({ row, packet }) => `| ${row.ordinal} | ${packet.subject.source_label.replaceAll("|", "\\|")} | \`${packet.packet_id}\` | ${packet.investigation.status} | ${row.storage_status} |`).join("\n");
+  const rows = packets.map(({ row, packet }) => `| ${row.ordinal} | ${packet.subject.source_label.replaceAll("|", "\\|")} | ${packet.subject.selection_reason.replaceAll("|", "\\|")} | \`${packet.packet_id}\` | ${packet.investigation.status} | ${row.storage_status} |`).join("\n");
   const report = `# Scout v0.1 dogfood report
 
 Generated from the persistent Scout ledger and its referenced immutable packets. No source bodies, credentials, cookies, authorization headers, or raw provider responses are included.
@@ -54,9 +56,9 @@ Files inspected: ${files.length ? files.map((x) => `\`${x}\``).join(", ") : "non
 
 ## Packets
 
-| # | Source label | Packet ID | Investigation | Store |
-| ---: | --- | --- | --- | --- |
-${rows || "| - | - | - | - | - |"}
+| # | Source label | Selection reason | Packet ID | Investigation | Store |
+| ---: | --- | --- | --- | --- | --- |
+${rows || "| - | - | - | - | - | - |"}
 
 Emitted packets: ${packetRows.filter((x) => x.storage_status === "emitted").length}. Reused packets: ${packetRows.filter((x) => x.storage_status === "reused").length}.
 

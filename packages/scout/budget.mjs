@@ -23,12 +23,19 @@ export class Budget {
   checkTime() {
     if (this.clock() - this.started >= this.configured.max_elapsed_ms) throw new BudgetError("budget_time_exhausted");
   }
+  remainingElapsedMs() { return Math.max(0, this.configured.max_elapsed_ms - (this.clock() - this.started)); }
   reserve(kind, amount = 1) {
     this.checkTime();
     const [maximum, counter, code] = LIMITS[kind];
     if (!Number.isInteger(amount) || amount < 0) throw new Error("budget reservation must be a nonnegative integer");
     if (this.consumed[counter] + amount > this.configured[maximum]) throw new BudgetError(code);
     this.consumed[counter] += amount;
+  }
+  ensure(kind, amount = 1) {
+    this.checkTime();
+    const [maximum, counter, code] = LIMITS[kind];
+    if (!Number.isInteger(amount) || amount < 0) throw new Error("budget check must be a nonnegative integer");
+    if (this.consumed[counter] + amount > this.configured[maximum]) throw new BudgetError(code);
   }
   depth(value) {
     this.checkTime();

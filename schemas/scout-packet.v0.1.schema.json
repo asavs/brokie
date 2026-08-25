@@ -56,7 +56,7 @@
     },
     "acquisition": {
       "type": "object", "additionalProperties": false,
-      "required": ["acquisition_id", "kind", "requested_locator", "final_locator", "depth", "depth_state", "parent_acquisition_id", "originating_link_id", "status", "artifact_id", "http_status", "failure", "authority", "excerpt_ids"],
+      "required": ["acquisition_id", "kind", "requested_locator", "final_locator", "depth", "depth_state", "parent_acquisition_id", "originating_link_id", "status", "artifact_id", "http_status", "failure", "authority", "link", "excerpt_ids"],
       "properties": {
         "acquisition_id": { "$ref": "#/$defs/acquisitionId" },
         "kind": { "enum": ["git_file", "http_seed", "http_link", "derived"] },
@@ -71,6 +71,7 @@
         "http_status": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 100, "maximum": 599 }] },
         "failure": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/failure" }] },
         "authority": { "$ref": "#/$defs/authority" },
+        "link": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/link" }] },
         "excerpt_ids": { "type": "array", "items": { "$ref": "#/$defs/excerptId" }, "uniqueItems": true }
       }
     },

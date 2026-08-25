@@ -6,7 +6,11 @@ import { execFileSync } from "node:child_process";
 import { acquisitionId } from "./canonical.mjs";
 import { inspectLinks, inspectMarkdown, paginate } from "./inspect.mjs";
 
-function coded(code, detail = "") { const error = new Error(code); error.code = code; error.detail = detail; return error; }
+function coded(code, detail = "", properties = {}) { const error = new Error(code); error.code = code; error.detail = detail; Object.assign(error, properties); return error; }
+
+export function sanitizeLocator(locator) {
+  try { const url = new URL(locator); if (url.username || url.password) { url.username = ""; url.password = ""; } return url.href; } catch { return String(locator); }
+}
 
 export function inspectGitRepository(locator) {
   const supplied = path.resolve(locator);
@@ -24,25 +28,35 @@ function inside(root, candidate) {
   return relative !== "" && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
 }
 
-export function createGitFileTools({ repository, artifactStore, budget, ledger, runId }) {
+export function createGitFileTools({ repository, artifactStore, budget, ledger, runId, fileSystem = fs }) {
   const tracked = new Set(repository.tracked.map((item) => item.replaceAll("\\", "/")));
   return {
     listFiles(cursor = 0) { return paginate(repository.tracked, cursor, 200); },
     readFile(relativePath) {
-      if (path.isAbsolute(relativePath) || relativePath.includes("\0") || !tracked.has(relativePath.replaceAll("\\", "/"))) throw coded(path.isAbsolute(relativePath) || relativePath.includes("..") ? "path_escape" : "untracked_file");
-      budget.depth(0); budget.reserve("page");
-      const candidate = path.resolve(repository.root, relativePath);
-      let real;
-      try { real = fs.realpathSync(candidate); } catch { throw coded("untracked_file"); }
-      if (!inside(repository.root, real)) throw coded("path_escape");
-      const stat = fs.lstatSync(candidate);
-      if (stat.isSymbolicLink() || !stat.isFile()) throw coded("path_escape");
-      budget.reserve("byte", stat.size);
-      const bytes = fs.readFileSync(real);
-      if (bytes.length > stat.size) budget.reserve("byte", bytes.length - stat.size);
-      const artifact = artifactStore.put(bytes, { kind: "repository_file", media_type: relativePath.toLowerCase().endsWith(".html") ? "text/html" : "text/markdown" });
-      ledger?.event(runId, "tool", { name: "file.read", version: "0.1.0", input: { relative_path: relativePath }, status: "acquired", output: { artifact_id: artifact.artifact_id, byte_length: bytes.length }, budget: budget.snapshot() });
-      return { bytes, artifact };
+      const started = Date.now(), startedAt = new Date().toISOString(), before = budget.snapshot(); let status = "failed", failureCode = null, output = null;
+      try {
+        if (path.isAbsolute(relativePath) || relativePath.includes("\0") || !tracked.has(relativePath.replaceAll("\\", "/"))) throw coded(path.isAbsolute(relativePath) || relativePath.includes("..") ? "path_escape" : "untracked_file");
+        budget.depth(0); budget.reserve("page");
+        const candidate = path.resolve(repository.root, relativePath);
+        let real;
+        try { real = fileSystem.realpathSync(candidate); } catch { throw coded("untracked_file"); }
+        if (!inside(repository.root, real)) throw coded("path_escape");
+        const stat = fileSystem.lstatSync(candidate);
+        if (stat.isSymbolicLink() || !stat.isFile()) throw coded("path_escape");
+        budget.ensure("byte", stat.size);
+        const handle = fileSystem.openSync(real, "r"); let bytes;
+        try {
+          const opened = fileSystem.fstatSync(handle); if (!opened.isFile() || opened.size !== stat.size) throw coded("content_too_large");
+          bytes = Buffer.alloc(opened.size); let offset = 0;
+          while (offset < bytes.length) { budget.checkTime(); const count = fileSystem.readSync(handle, bytes, offset, Math.min(64 * 1024, bytes.length - offset), offset); if (!count) { bytes = bytes.subarray(0, offset); break; } budget.reserve("byte", count); offset += count; }
+          const probe = Buffer.alloc(1); if (fileSystem.readSync(handle, probe, 0, 1, opened.size) > 0) throw coded("content_too_large");
+        } finally { fileSystem.closeSync(handle); }
+        const artifact = artifactStore.put(bytes, { kind: "repository_file", media_type: relativePath.toLowerCase().endsWith(".html") ? "text/html" : "text/markdown" });
+        status = "acquired"; output = { artifact_id: artifact.artifact_id, byte_length: bytes.length };
+        ledger?.event(runId, "tool", { name: "file.read", version: "0.1.0", input: { relative_path: relativePath }, status, output, budget: budget.snapshot() });
+        return { bytes, artifact };
+      } catch (error) { failureCode = error.code ?? "other"; ledger?.event(runId, "tool", { name: "file.read", version: "0.1.0", input: { relative_path: relativePath }, status: "failed", failure_code: failureCode, budget: budget.snapshot() }); throw error; }
+      finally { ledger?.toolCall(runId, { name: "file.read", version: "0.1.0", started_at: startedAt, finished_at: new Date().toISOString(), input: { relative_path: relativePath }, status, output, failure_code: failureCode, budget_before: before, budget_after: budget.snapshot(), elapsed_ms: Date.now() - started }); }
     },
     inspectMarkdown(bytes) { return inspectMarkdown(bytes); },
     inspectLinks(bytes, options) { return inspectLinks(bytes, options); },
@@ -85,31 +99,47 @@ export async function validatePublicUrl(locator, lookup = dns.lookup) {
   return url;
 }
 
-function robotsAllows(body, pathname) {
-  let applies = false;
+export function robotsAllows(body, pathname, agent = "Brokie-Scout") {
+  const groups = []; let current = null;
   for (const raw of body.split(/\r?\n/)) {
     const line = raw.replace(/#.*$/, "").trim();
     const split = line.indexOf(":"); if (split < 0) continue;
     const key = line.slice(0, split).trim().toLowerCase(), value = line.slice(split + 1).trim();
-    if (key === "user-agent") applies = value === "*";
-    if (applies && key === "disallow" && value && pathname.startsWith(value)) return false;
+    if (key === "user-agent") {
+      if (!current || current.rules.length) { current = { agents: [], rules: [] }; groups.push(current); }
+      current.agents.push(value.toLowerCase());
+    } else if (current && ["allow", "disallow"].includes(key)) current.rules.push({ kind: key, pattern: value });
   }
-  return true;
+  const lowered = agent.toLowerCase();
+  const scored = groups.map((group) => ({ group, score: Math.max(-1, ...group.agents.map((value) => value === "*" ? 0 : lowered.includes(value) ? value.length : -1)) })).filter((item) => item.score >= 0);
+  if (!scored.length) return true;
+  const best = Math.max(...scored.map((item) => item.score)), matches = [];
+  for (const { group, score } of scored) if (score === best) for (const rule of group.rules) {
+    if (!rule.pattern) continue;
+    const anchored = rule.pattern.endsWith("$"), source = rule.pattern.replace(/\$$/, "").split("*").map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+    if (new RegExp(`^${source}${anchored ? "$" : ""}`).test(pathname)) matches.push(rule);
+  }
+  if (!matches.length) return true;
+  matches.sort((a, b) => b.pattern.length - a.pattern.length || (a.kind === "allow" ? -1 : 1));
+  return matches[0].kind === "allow";
 }
 
 export function createHttpTool({ artifactStore, budget, transport = fetch, lookup = dns.lookup, ledger, runId, userAgent = "Brokie-Scout/0.1 (+https://github.com/asavs/brokie)", maxRedirects = 5 }) {
   const robotsCache = new Map(); const fetched = new Map();
-  async function readBody(response) {
-    if (!response.body?.getReader) {
-      const raw = Buffer.from(await response.arrayBuffer()); budget.reserve("byte", raw.length); return raw;
-    }
+  async function readBody(response, signal) {
+    if (!response.body?.getReader) throw coded("other", "transport did not provide a bounded response stream");
     const chunks = [], reader = response.body.getReader();
+    const abort = () => { reader.cancel().catch(() => {}); };
+    signal.addEventListener("abort", abort, { once: true });
     try {
       while (true) {
         budget.checkTime(); const { done, value } = await reader.read(); if (done) break;
+        if (signal.aborted) throw coded("budget_time_exhausted");
         const chunk = Buffer.from(value); budget.reserve("byte", chunk.length); chunks.push(chunk);
       }
     } catch (error) { await reader.cancel().catch(() => {}); throw error; }
+    finally { signal.removeEventListener("abort", abort); }
+    if (signal.aborted) throw coded("budget_time_exhausted");
     return Buffer.concat(chunks);
   }
   async function dispatch(locator, { countPage, acceptBody = true } = {}) {
@@ -117,19 +147,18 @@ export function createHttpTool({ artifactStore, budget, transport = fetch, looku
     if (countPage) budget.reserve("page");
     for (let hop = 0; hop <= maxRedirects; hop += 1) {
       const url = await validatePublicUrl(current, lookup); budget.reserve("request");
-      const controller = new AbortController(); const remaining = Math.max(1, budget.configured.max_elapsed_ms - (Date.now() - budget.started));
-      const timer = setTimeout(() => controller.abort(), remaining);
-      let response;
-      try { response = await transport(url.href, { method: "GET", redirect: "manual", headers: { "User-Agent": userAgent, Accept: "text/html,text/plain,text/markdown" }, signal: controller.signal }); }
-      catch (error) { throw coded(error?.name === "AbortError" ? "fetch_timeout" : "http_error"); }
+      const controller = new AbortController(); const remaining = Math.max(1, budget.remainingElapsedMs()); let deadlineExpired = false;
+      const timer = setTimeout(() => { deadlineExpired = true; controller.abort(); }, remaining);
+      let response, raw;
+      try { response = await transport(url.href, { method: "GET", redirect: "manual", headers: { "User-Agent": userAgent, Accept: "text/html,text/plain,text/markdown" }, signal: controller.signal }); raw = await readBody(response, controller.signal); }
+      catch (error) { if (error?.code) throw error; throw coded(deadlineExpired ? "budget_time_exhausted" : error?.name === "AbortError" ? "fetch_timeout" : "http_error"); }
       finally { clearTimeout(timer); }
-      const raw = await readBody(response);
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get("location"); if (!location) throw coded("http_error");
         if (hop >= maxRedirects) throw coded("redirect_limit_exceeded");
         current = new URL(location, url).href; continue;
       }
-      if (!response.ok) throw coded("http_error", `HTTP ${response.status}`);
+      if (!response.ok) throw coded("http_error", `HTTP ${response.status}`, { http_status: response.status });
       if (!acceptBody) return { bytes: raw, final_locator: url.href, status: response.status, headers: response.headers };
       const mediaType = (response.headers.get("content-type") ?? "").split(";", 1)[0].toLowerCase();
       if (!new Set(["text/html", "text/plain", "text/markdown", "text/x-markdown"]).has(mediaType)) throw coded("unsupported_content_type");
@@ -141,30 +170,41 @@ export function createHttpTool({ artifactStore, budget, transport = fetch, looku
     const origin = url.origin;
     if (!robotsCache.has(origin)) {
       try { const result = await dispatch(`${origin}/robots.txt`, { countPage: false, acceptBody: false }); robotsCache.set(origin, result.bytes.toString("utf8")); }
-      catch (error) { if (error.code === "http_error") robotsCache.set(origin, ""); else throw error; }
+      catch (error) {
+        if ([404, 410].includes(error.http_status)) robotsCache.set(origin, "");
+        else if ([401, 403].includes(error.http_status)) throw coded("robots_denied");
+        else throw error;
+      }
     }
-    if (!robotsAllows(robotsCache.get(origin), url.pathname)) throw coded("robots_denied");
+    if (!robotsAllows(robotsCache.get(origin), `${url.pathname}${url.search}`)) throw coded("robots_denied");
   }
   return {
     async fetch(locator, { depth, kind, parent_acquisition_id = null, originating_link_id = null, authority }) {
-      budget.depth(depth);
-      const cacheKey = `${depth}\n${locator}`;
-      if (fetched.has(cacheKey)) { ledger?.event(runId, "tool", { name: "http.fetch", version: "0.1.0", input: { locator, depth }, status: "cache_hit", output: { artifact_id: fetched.get(cacheKey).artifact_id }, budget: budget.snapshot() }); return fetched.get(cacheKey); }
-      budget.reserve("page");
-      const parsed = await validatePublicUrl(locator, lookup); await obeyRobots(parsed);
+      const started = Date.now(), startedAt = new Date().toISOString(), before = budget.snapshot(); let status = "failed", failureCode = null, output = null;
       try {
-        const result = await dispatch(locator, { countPage: false });
-        const artifact = artifactStore.put(result.bytes, { kind: "http_body", media_type: result.media_type });
-        const acquisition = { acquisition_id: "", kind, requested_locator: locator, final_locator: result.final_locator, depth, depth_state: "resolved", parent_acquisition_id, originating_link_id, status: "acquired", artifact_id: artifact.artifact_id, http_status: result.status, failure: null, authority, excerpt_ids: [] };
+        budget.depth(depth);
+        const cacheKey = `${depth}\n${locator}`;
+        let cached = fetched.get(cacheKey); const cacheHit = Boolean(cached);
+        if (!cached) {
+          budget.reserve("page");
+          const parsed = await validatePublicUrl(locator, lookup); await obeyRobots(parsed);
+          const result = await dispatch(locator, { countPage: false });
+          const artifact = artifactStore.put(result.bytes, { kind: "http_body", media_type: result.media_type });
+          cached = { artifact_id: artifact.artifact_id, bytes: result.bytes, final_locator: result.final_locator, http_status: result.status, last_modified: result.headers.get("last-modified") };
+          fetched.set(cacheKey, cached);
+        }
+        const acquisition = { acquisition_id: "", kind, requested_locator: locator, final_locator: cached.final_locator, depth, depth_state: "resolved", parent_acquisition_id, originating_link_id, status: "acquired", artifact_id: cached.artifact_id, http_status: cached.http_status, failure: null, authority, link: null, excerpt_ids: [] };
         acquisition.acquisition_id = acquisitionId(acquisition);
-        const value = { ...acquisition, bytes: result.bytes, last_modified: result.headers.get("last-modified") };
-        fetched.set(cacheKey, value); ledger?.event(runId, "tool", { name: "http.fetch", version: "0.1.0", input: { locator, depth }, status: "acquired", output: { artifact_id: artifact.artifact_id, final_locator: result.final_locator }, budget: budget.snapshot() }); return value;
-      } catch (error) { ledger?.event(runId, "tool", { name: "http.fetch", version: "0.1.0", input: { locator, depth }, status: "failed", failure_code: error.code ?? "other", budget: budget.snapshot() }); throw error; }
+        const value = { ...acquisition, bytes: cached.bytes, last_modified: cached.last_modified };
+        status = cacheHit ? "cache_hit" : "acquired"; output = { artifact_id: cached.artifact_id, final_locator: cached.final_locator };
+        ledger?.event(runId, "tool", { name: "http.fetch", version: "0.1.0", input: { locator: sanitizeLocator(locator), depth }, status, output, budget: budget.snapshot() }); return value;
+      } catch (error) { failureCode = error.code ?? "other"; ledger?.event(runId, "tool", { name: "http.fetch", version: "0.1.0", input: { locator: sanitizeLocator(locator), depth }, status: "failed", failure_code: failureCode, budget: budget.snapshot() }); throw error; }
+      finally { ledger?.toolCall(runId, { name: "http.fetch", version: "0.1.0", started_at: startedAt, finished_at: new Date().toISOString(), input: { locator: sanitizeLocator(locator), depth }, status, output, failure_code: failureCode, budget_before: before, budget_after: budget.snapshot(), elapsed_ms: Date.now() - started }); }
     },
   };
 }
 
 export function failedAcquisition({ kind, locator, depth, parent_acquisition_id = null, originating_link_id = null, authority, code, status = "blocked" }) {
-  const value = { acquisition_id: "", kind, requested_locator: locator, final_locator: locator, depth, depth_state: "blocked", parent_acquisition_id, originating_link_id, status, artifact_id: null, http_status: null, failure: { code, detail: "" }, authority, excerpt_ids: [] };
+  const value = { acquisition_id: "", kind, requested_locator: locator, final_locator: locator, depth, depth_state: status === "skipped" ? "discovered" : "blocked", parent_acquisition_id, originating_link_id, status, artifact_id: null, http_status: null, failure: { code, detail: "" }, authority, link: null, excerpt_ids: [] };
   value.acquisition_id = acquisitionId(value); return value;
 }

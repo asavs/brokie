@@ -28,6 +28,13 @@ CREATE TABLE IF NOT EXISTS scout_packets (
  storage_status TEXT NOT NULL CHECK(storage_status IN ('emitted','reused')), investigation_status TEXT NOT NULL,
  PRIMARY KEY(run_id, ordinal)
 );
+CREATE TABLE IF NOT EXISTS scout_tool_calls (
+ run_id TEXT NOT NULL REFERENCES scout_runs(run_id), sequence INTEGER NOT NULL,
+ tool_name TEXT NOT NULL, tool_version TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT NOT NULL,
+ input_json TEXT NOT NULL, status TEXT NOT NULL, output_references_json TEXT,
+ failure_code TEXT, budget_before_json TEXT NOT NULL, budget_after_json TEXT NOT NULL, elapsed_ms INTEGER NOT NULL,
+ PRIMARY KEY(run_id, sequence)
+);
 `;
 
 export class ScoutLedger {
@@ -60,6 +67,14 @@ export class ScoutLedger {
       runId, attempt.attempt_number, attempt.started_at, attempt.finished_at, attempt.status,
       attempt.requested_model, attempt.resolved_model ?? null, attempt.usage ? canonicalJson(attempt.usage) : null,
       attempt.action ? canonicalJson(attempt.action) : null, attempt.failure_code ?? null, attempt.restricted_trace_path ?? null,
+    );
+  }
+  toolCall(runId, call) {
+    const sequence = this.db.prepare("SELECT COALESCE(MAX(sequence),0)+1 AS sequence FROM scout_tool_calls WHERE run_id=?").get(runId).sequence;
+    this.db.prepare("INSERT INTO scout_tool_calls VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+      runId, sequence, call.name, call.version, call.started_at, call.finished_at,
+      canonicalJson(call.input), call.status, call.output ? canonicalJson(call.output) : null,
+      call.failure_code ?? null, canonicalJson(call.budget_before), canonicalJson(call.budget_after), call.elapsed_ms,
     );
   }
   packet(runId, ordinal, packetId, storageStatus, investigationStatus) {

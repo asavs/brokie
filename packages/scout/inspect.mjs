@@ -18,6 +18,28 @@ export function inspectMarkdown(bytes) {
   return { headings, list_items };
 }
 
+function stripMarkup(value) {
+  return value.replace(/<[^>]*>/g, " ").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[*_`~]/g, "").replace(/\s+/g, " ").trim();
+}
+
+export function inspectListingBoundaries(bytes, mediaType = "text/markdown") {
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  const boundaries = [];
+  if (mediaType === "text/html") {
+    for (const match of text.matchAll(/<(li|article|tr)\b[^>]*>[\s\S]*?<\/\1>/gi)) {
+      const anchor = /<a\b[^>]*>([\s\S]*?)<\/a>/i.exec(match[0]);
+      const label = stripMarkup(anchor?.[1] ?? match[0]); if (!label) continue;
+      boundaries.push({ start_byte: byteOffset(text, match.index), end_byte: byteOffset(text, match.index + match[0].length), source_label: label });
+    }
+  } else {
+    for (const item of inspectMarkdown(bytes).list_items) {
+      const label = stripMarkup(item.text).split(/\s+[—–-]\s+/, 1)[0].trim();
+      if (label) boundaries.push({ start_byte: item.start_byte, end_byte: item.end_byte, source_label: label });
+    }
+  }
+  return boundaries;
+}
+
 export function inspectLinks(bytes, { artifactId, baseLocator, sourceDepth }) {
   const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   const found = [];
