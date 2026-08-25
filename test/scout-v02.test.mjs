@@ -15,9 +15,11 @@ delete process.env.OPENROUTER_API_KEY; delete process.env.NVIDIA_NIM_API_KEY;
 assert.deepEqual(extractActionV02("```json\n{\"type\":\"finalize\"}\n```"), { type: "finalize" });
 const temp = path.join(import.meta.dirname, "tmp", "scout-v02"); fs.rmSync(temp, { recursive: true, force: true }); fs.mkdirSync(temp, { recursive: true });
 const repo = path.join(temp, "revision-source"); fs.mkdirSync(repo);
+const fillerListings = Array.from({ length: 120 }, (_, index) => `- [Filler ${index}](https://filler-${index}.example/) - Unselected fixture.`).join("\n");
 const committedCatalog = `# Offers
 
 - [Alpha](https://alpha.example/) - Collection claim: free plan with 5 projects per month.
+${fillerListings}
 - [Beta](https://beta.example/) - Collection claim: free browser service.
 `;
 fs.writeFileSync(path.join(repo, "CATALOG.md"), committedCatalog); fs.writeFileSync(path.join(repo, "OTHER.md"), "# Not the catalog\n");

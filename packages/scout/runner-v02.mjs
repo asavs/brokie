@@ -70,6 +70,14 @@ function writeRestrictedTrace(traceRoot, runId, attemptNumber, response) {
   return tracePath;
 }
 
+function writeRestrictedFailure(traceRoot, runId, attemptNumber, error) {
+  if (!traceRoot) return null;
+  const tracePath = path.join(path.resolve(traceRoot), runId, `attempt-${String(attemptNumber).padStart(2, "0")}-failure.json`);
+  fs.mkdirSync(path.dirname(tracePath), { recursive: true });
+  fs.writeFileSync(tracePath, `${JSON.stringify({ error: String(error).slice(0, 20_000), code: error?.code ?? null }, null, 2)}\n`);
+  return tracePath;
+}
+
 export class ScriptedProviderV02 {
   constructor(actions, options = {}) { this.actions = [...actions]; this.provider = options.provider ?? "scripted"; this.model = options.model ?? "scripted/free"; this.resolvedModel = options.resolvedModel ?? "scripted/replay-v0.2"; this.calls = 0; }
   async complete(messages) { const item = this.actions[this.calls++]; if (item === undefined) throw coded("provider_error"); const action = typeof item === "function" ? item(JSON.parse(messages.at(-1).content)) : item; return { content: JSON.stringify(action), resolved_model: this.resolvedModel, usage: null }; }
@@ -111,14 +119,16 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
   ledger.event(runId, "research_request", research_request);
   const context = { protocol: ACTION_VERSION, research_request, target_packet_count, target_labels, allowed_actions: [], observations: [] };
   const artifacts = new Map(), subjects = [], terminalReasons = [], resolvedModels = [];
-  let repository = null, fileTools = null, nextCursor = 0, finalized = false, invalidStreak = 0;
+  let repository = null, fileTools = null, nextCursor = 0, finalized = false, protocolFailureStreak = 0, providerFailureStreak = 0;
   const readPaths = new Set(), listedCursors = new Set();
   const httpTool = createHttpTool({ artifactStore, budget, transport, lookup, ledger, runId, userAgent: "Brokie-Scout/0.2 (+https://github.com/asavs/brokie)" });
 
   function discover(bytes, mediaType, artifactId, baseLocator) {
     const boundaries = inspectListingBoundaries(bytes, mediaType);
     const links = inspectLinks(bytes, { artifactId, baseLocator, sourceDepth: 0 });
-    const candidates = sample(boundaries, MAX_CANDIDATES).map((boundary) => ({
+    const required = target_labels.length ? boundaries.filter(({ source_label }) => target_labels.includes(source_label)) : [];
+    const remainder = boundaries.filter((boundary) => !required.includes(boundary));
+    const candidates = [...required, ...sample(remainder, Math.max(0, MAX_CANDIDATES - required.length))].sort((a, b) => a.start_byte - b.start_byte).map((boundary) => ({
       ...boundary, description_text: textAt(bytes, boundary.start_byte, boundary.end_byte).slice(0, 1200),
       links: links.filter((link) => link.start_byte >= boundary.start_byte && link.end_byte <= boundary.end_byte).slice(0, MAX_LISTING_LINKS).map((link, index) => ({ index, label: link.label, resolved_destination: link.resolved_destination })),
     }));
@@ -195,9 +205,12 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
       ledger.event(runId, "agent_action", action);
     } catch (error) {
       const code = error instanceof BudgetError || (typeof error?.code === "string" && FAILURE_CODES.has(error.code)) ? error.code : "provider_error";
+      if (!restrictedTracePath) restrictedTracePath = writeRestrictedFailure(restricted_trace_root, runId, attemptNumber, error);
       ledger.attempt(runId, { attempt_number: attemptNumber, started_at: startedAt, finished_at: new Date().toISOString(), status: code, requested_model: provider.model, resolved_model: response?.resolved_model, usage: response?.usage, failure_code: code, restricted_trace_path: restrictedTracePath });
-      terminalReasons.push(code); invalidStreak += 1;
-      if (code.startsWith("budget_") || invalidStreak >= 3) break;
+      terminalReasons.push(code);
+      if (code === "provider_error") { providerFailureStreak += 1; protocolFailureStreak = 0; }
+      else { protocolFailureStreak += 1; providerFailureStreak = 0; }
+      if (code.startsWith("budget_") || protocolFailureStreak >= 3 || providerFailureStreak >= 3) break;
       context.observations.push({ type: "correction", failure_code: code, instruction: "Return one action allowed by allowed_actions." }); continue;
     }
     try {
@@ -214,7 +227,8 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
         artifacts.set(result.artifact.artifact_id, { bytes: result.bytes, artifact_id: result.artifact.artifact_id, readable: { artifact: result.artifact, bytes: result.bytes, incomplete: false, transformation: null }, locator: action.path, baseLocator, boundaries: discovered.boundaries, links: discovered.links, base: null });
         const structure = inspectMarkdown(result.bytes);
         context.observations.push({ type: "collection", path: action.path, artifact_id: result.artifact.artifact_id, heading_count: structure.headings.length, candidate_count: discovered.boundaries.length, listing_candidates: discovered.candidates });
-        context.allowed_actions = [...(nextCursor === null ? [] : ["list_files"]), "read_collection", "select_listings"];
+        const allTargetsVisible = target_labels.length > 0 && target_labels.every((label) => discovered.candidates.some(({ source_label }) => source_label === label));
+        context.allowed_actions = allTargetsVisible ? ["select_listings"] : [...(nextCursor === null ? [] : ["list_files"]), "read_collection", "select_listings"];
       } else if (action.type === "select_listings") {
         if (subjects.length || action.listings.length !== target_packet_count) throw coded("invalid_agent_action");
         const staged = [], keys = new Set();
@@ -297,11 +311,11 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
         subject.researched = true; ledger.event(runId, "research_recorded", { listing_index: subject.index, source_label: subject.chosen.source_label, finding_count: findingRecords.length, outcomes });
         context.active_listing_index = subjects.find((item) => !item.researched)?.index ?? null; refreshActivePages(); context.allowed_actions = nextResearchActions();
       } else if (action.type === "finalize") finalized = true;
-      invalidStreak = 0;
+      protocolFailureStreak = 0; providerFailureStreak = 0;
     } catch (error) {
       const code = typeof error?.code === "string" && FAILURE_CODES.has(error.code) ? error.code : "invalid_agent_action";
-      terminalReasons.push(code); invalidStreak += 1; ledger.failAttempt(runId, attemptNumber, code);
-      if (code.startsWith("budget_") || invalidStreak >= 3) break;
+      terminalReasons.push(code); protocolFailureStreak += 1; providerFailureStreak = 0; ledger.failAttempt(runId, attemptNumber, code);
+      if (code.startsWith("budget_") || protocolFailureStreak >= 3) break;
       context.observations.push({ type: "correction", failure_code: code, instruction: "Use only the current allowed actions and supplied indices." });
     }
   }
