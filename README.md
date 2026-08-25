@@ -59,6 +59,8 @@ The provider-neutral [v0.1 librarian runner](docs/LIBRARIAN-V0.1.md) adds bounde
 
 See [the product brief](docs/PRODUCT_BRIEF.md) and [v0.0.1 experiment report](docs/V0.0.1-EXPERIMENT.md).
 
+The authoritative long-term mission, Scout/Librarian boundary, trust model, and current roadmap live in the [Brokie north star](docs/NORTH-STAR.md). Future implementation work should treat it as the strategic source of truth.
+
 For current Linux commands and the eventual service shape, see [WSL development](docs/WSL-DEVELOPMENT.md).
 
 ## Relationship to free-for-dev

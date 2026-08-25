@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added the canonical Brokie north star, Scout/Librarian packet boundary, and durable future-agent handoff for the `0.2.0` development line.
+
 ## 0.1.0 — 2026-08-24
 
 - Versioned typed candidate contract, controlled vocabulary, and immutable SQLite revision store.

@@ -1,6 +1,8 @@
 # Brokie: product brief and working plan
 
-Status: discussion-stage product definition; no implementation goal has been committed
+> **Document role:** detailed planning and decision archive. For the authoritative current mission, role boundaries, and implementation horizon, read [`NORTH-STAR.md`](NORTH-STAR.md). Where the two disagree, the north star records the later decision.
+
+Status: detailed decision archive; implementation began with releases `0.0.1` and `0.1.0`
 
 ## Confirmed initial decisions
 
