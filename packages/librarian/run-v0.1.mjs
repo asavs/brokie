@@ -7,6 +7,8 @@ import { openState } from "../maintainer/state.mjs";
 import { sha } from "./lib.mjs";
 import { createCompatibleProvider, providerEnvironmentKey } from "./provider.mjs";
 import { runLibrarianV01 } from "./run-v0.1-core.mjs";
+import { ArtifactStore } from "../scout/store.mjs";
+import { packetToLibrarianRecord } from "../scout/adapter.mjs";
 
 const cli = process.argv.slice(2);
 const option = (name, fallback) =>
@@ -16,18 +18,23 @@ const providerName = option("provider", "openrouter");
 const model = option("model", providerName === "openrouter" ? "openrouter/free" : null);
 const sourceId = option("source-id", null);
 const recordPath = option("record", null);
+const packetPath = option("packet", null);
 const stagingPath = path.resolve(
   option("staging", path.join(import.meta.dirname, "generated", "staging.json")),
 );
 const stateDir = path.resolve(option("state-dir", path.join(root, "var", "v0.1")));
 const observedAt = option("observed-at", new Date().toISOString());
 if (!model) throw new Error("--model is required for the selected provider");
-if (!recordPath && !sourceId) {
-  throw new Error("provide --record=<normalized-record.json> or --source-id=<id>");
+if ([recordPath, sourceId, packetPath].filter(Boolean).length !== 1) {
+  throw new Error("provide exactly one of --packet=<packet.json>, --record=<normalized-record.json>, or --source-id=<id>");
 }
 
 let record;
-if (recordPath) {
+if (packetPath) {
+  const packet = JSON.parse(fs.readFileSync(path.resolve(packetPath), "utf8"));
+  const scoutState = path.resolve(option("scout-state", path.join(root, "var", "scout-v0.1")));
+  record = packetToLibrarianRecord(packet, new ArtifactStore(scoutState));
+} else if (recordPath) {
   record = JSON.parse(fs.readFileSync(path.resolve(recordPath), "utf8"));
   if (record.record) record = record.record;
 } else {

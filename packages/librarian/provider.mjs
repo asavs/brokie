@@ -41,8 +41,10 @@ export function createCompatibleProvider({
   return {
     provider,
     model,
-    async complete(messages) {
+    async complete(messages, options = {}) {
       const controller = new AbortController();
+      const abort = () => controller.abort();
+      options.signal?.addEventListener("abort", abort, { once: true });
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       let response;
       try {
@@ -70,6 +72,7 @@ export function createCompatibleProvider({
         });
       } finally {
         clearTimeout(timeout);
+        options.signal?.removeEventListener("abort", abort);
       }
 
       const body = await response.json();
