@@ -20,7 +20,7 @@ Raw Git and HTTP bytes remain immutable content-addressed artifacts. HTML is det
 
 The model receives bounded readable windows and bounded harness-extracted links. It may select only byte ranges that the harness exposed. A finding contains a source-local statement, derivation (`explicit`, `parsed`, or `inferred`), exact supporting excerpt IDs, acquisition IDs, a topic, and optional parsed primitives. Supported primitive shapes cover quantity and source-unit text, money and currency, cadence text, date text, boolean requirements, and audience text. Primitive source text must resolve inside the cited evidence. Findings are not catalog facts.
 
-Conflicts reference two or more findings. Outcomes reference findings and conflicts and retain unresolved questions. `answered` requires supported findings; `conflicting` requires a conflict; `partially_answered` requires both support and an unresolved question; `not_found` and `blocked` cannot masquerade as supported answers.
+Conflicts reference two or more findings. Outcomes reference findings and conflicts and retain unresolved questions. The exact statement excerpt is identified separately from its supporting evidence. For this authoritative-evidence request, `answered` requires at least one statement excerpt from a linked first-party acquisition; a collection-only claim must remain partial or unresolved. `conflicting` requires a conflict; `partially_answered` requires both support and an unresolved question; `not_found` and `blocked` cannot masquerade as supported answers.
 
 No whole raw HTML response is selected as evidence by default. Excerpts are short ranges from the listing, readable derived artifacts, or plain-text artifacts and are byte-validated against immutable storage.
 
@@ -28,7 +28,7 @@ No whole raw HTML response is selected as evidence by default. Excerpts are shor
 
 The path is limited to collection depth 0, listed page depth 1, and at most one selected evidence page at depth 2 per subject. Only harness-extracted HTTP(S) links may be followed. The model cannot invent a URL. Pricing, plans, documentation, terms, and eligibility links are shown as ordinary bounded link candidates rather than source-specific tools or rules.
 
-JavaScript-dependent or materially empty readable content remains `resolved` with a `content_incomplete` or `browser_required` observation. Browser automation is out of scope.
+JavaScript-dependent or materially empty readable content remains acquired but `content_incomplete`, with a `browser_required` or sparse-content reason. Browser automation is out of scope.
 
 ## Git revision fidelity
 
@@ -53,4 +53,3 @@ The corrective dogfood is exactly five configured listing labels. Configuration 
 Out of scope are full repository fan-out, CSV support, arbitrary crawling, browser automation, authenticated pages, Oracle deployment, Planner behavior, and release `0.2.0`.
 
 Acceptance requires deterministic adversarial tests plus one retained live state directory. The live report must distinguish acquisition from research, show selected bounded evidence and gaps, and record real free-model Librarian results for all five packets without paid fallback.
-

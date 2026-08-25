@@ -8,6 +8,7 @@ import { createPacketValidatorV02 } from "../packages/scout/validate-packet-v02.
 import { extractActionV02, runScoutV02 } from "../packages/scout/runner-v02.mjs";
 import { packetToLibrarianBundle } from "../packages/scout/adapter-v02.mjs";
 import { packetId } from "../packages/scout/canonical.mjs";
+import { findingIdV02 } from "../packages/scout/identity-v02.mjs";
 import { generateDogfoodReportV02 } from "../packages/scout/report-v02.mjs";
 import { summarizeLibrarianCandidate } from "../packages/scout/librarian-eval-v02-core.mjs";
 
@@ -114,6 +115,10 @@ assert.match(summarizeLibrarianCandidate({ product: { source_name: "Alpha", desc
 
 const invalid = structuredClone(beta); invalid.research_outcomes[0] = { topic: "benefit", status: "answered", finding_ids: [], conflict_ids: [], unresolved_questions: [] }; invalid.packet_id = packetId(invalid);
 assert.throws(() => first.validator(invalid), /answered outcome is unsupported/);
+const collectionOnlyAnswer = structuredClone(alpha), collectionAcquisition = collectionOnlyAnswer.acquisitions.find(({ role }) => role === "collection_listing"), collectionExcerpt = collectionOnlyAnswer.excerpts.find(({ role, artifact_id }) => role === "research_evidence" && artifact_id === collectionAcquisition.raw_artifact_id), benefitFinding = collectionOnlyAnswer.findings.find(({ topic }) => topic === "benefit"), oldFindingId = benefitFinding.finding_id;
+benefitFinding.statement = collectionExcerpt.text; benefitFinding.statement_excerpt_id = collectionExcerpt.excerpt_id; benefitFinding.evidence_excerpt_ids = [...new Set([...benefitFinding.evidence_excerpt_ids, collectionExcerpt.excerpt_id])].sort(); benefitFinding.acquisition_ids = [...new Set([...benefitFinding.acquisition_ids, collectionAcquisition.acquisition_id])].sort(); benefitFinding.finding_id = findingIdV02(benefitFinding);
+collectionOnlyAnswer.research_outcomes.find(({ topic }) => topic === "benefit").finding_ids = [benefitFinding.finding_id]; assert.notEqual(oldFindingId, benefitFinding.finding_id); collectionOnlyAnswer.packet_id = packetId(collectionOnlyAnswer);
+assert.throws(() => first.validator(collectionOnlyAnswer), /answered outcome lacks a linked first-party statement/);
 
 const reportPath = path.join(temp, "dogfood.md"); generateDogfoodReportV02({ ledger: shared.ledger, runId: first.result.run_id, stateRoot: shared.root, outputPath: reportPath, command: "npm run scout:v02" });
 const report = fs.readFileSync(reportPath, "utf8"); assert.match(report, /Research request/); assert.match(report, /content_incomplete/); assert.match(report, /numerical_limits: \*\*conflicting\*\*/); assert.doesNotMatch(report, /Ignore prior instructions|window\.__data|NVIDIA_NIM_API_KEY|Bearer /);

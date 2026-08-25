@@ -89,7 +89,8 @@ export function createPacketValidatorV02(artifactStore) {
       if (!topicOrder.includes(finding.topic)) fail("finding topic was not requested");
       const evidence = finding.evidence_excerpt_ids.map((id) => excerpts.get(id));
       if (evidence.some((item) => !item || item.role !== "research_evidence")) fail("finding evidence is invalid");
-      if (!evidence.some(({ text }) => normalize(text) === normalize(finding.statement))) fail("finding statement must equal selected source text");
+      const statementExcerpt = excerpts.get(finding.statement_excerpt_id);
+      if (!statementExcerpt || !finding.evidence_excerpt_ids.includes(finding.statement_excerpt_id) || normalize(statementExcerpt.text) !== normalize(finding.statement)) fail("finding statement must equal its selected source excerpt");
       const expectedAcquisitions = new Set(evidence.flatMap(({ artifact_id }) => [...(artifactOwners.get(artifact_id) ?? [])]));
       if (!finding.acquisition_ids.every((id) => expectedAcquisitions.has(id)) || !finding.acquisition_ids.length) fail("finding acquisition lineage is invalid");
       const joined = normalize(evidence.map(({ text }) => text).join(" "));
@@ -110,6 +111,13 @@ export function createPacketValidatorV02(artifactStore) {
       if (outcome.finding_ids.some((id) => findings.get(id)?.topic !== outcome.topic)) fail("outcome finding topic mismatch");
       if (outcome.conflict_ids.some((id) => conflicts.get(id)?.topic !== outcome.topic)) fail("outcome conflict topic mismatch");
       if (outcome.status === "answered" && (!outcome.finding_ids.length || outcome.conflict_ids.length || outcome.unresolved_questions.length)) fail("answered outcome is unsupported");
+      if (outcome.status === "answered" && !outcome.finding_ids.some((id) => {
+        const finding = findings.get(id), statementExcerpt = excerpts.get(finding?.statement_excerpt_id);
+        return finding?.acquisition_ids.some((acquisitionId) => {
+          const acquisition = acquisitions.get(acquisitionId);
+          return acquisition?.authority.level === "linked_first_party" && [acquisition.raw_artifact_id, acquisition.readable_artifact_id].includes(statementExcerpt?.artifact_id);
+        });
+      })) fail("answered outcome lacks a linked first-party statement");
       if (outcome.status === "partially_answered" && (!outcome.finding_ids.length || !outcome.unresolved_questions.length)) fail("partial outcome requires support and unresolved work");
       if (outcome.status === "conflicting" && !outcome.conflict_ids.length) fail("conflicting outcome requires a conflict");
       if (["not_found", "blocked"].includes(outcome.status) && (outcome.finding_ids.length || outcome.conflict_ids.length || !outcome.unresolved_questions.length)) fail(`${outcome.status} outcome is incoherent`);

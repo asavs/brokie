@@ -144,11 +144,12 @@
     },
     "finding": {
       "type": "object", "additionalProperties": false,
-      "required": ["finding_id", "topic", "statement", "derivation", "evidence_excerpt_ids", "acquisition_ids", "parsed_values"],
+      "required": ["finding_id", "topic", "statement", "statement_excerpt_id", "derivation", "evidence_excerpt_ids", "acquisition_ids", "parsed_values"],
       "properties": {
         "finding_id": { "$ref": "#/$defs/findingId" },
         "topic": { "$ref": "#/$defs/topic" },
         "statement": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "statement_excerpt_id": { "$ref": "#/$defs/excerptId" },
         "derivation": { "enum": ["explicit", "parsed", "inferred"] },
         "evidence_excerpt_ids": { "type": "array", "items": { "$ref": "#/$defs/excerptId" }, "minItems": 1, "uniqueItems": true },
         "acquisition_ids": { "type": "array", "items": { "$ref": "#/$defs/acquisitionId" }, "minItems": 1, "uniqueItems": true },
