@@ -5,13 +5,14 @@ import { execFileSync } from "node:child_process";
 import { ArtifactStore, PacketStore } from "../packages/scout/store.mjs";
 import { ScoutLedger } from "../packages/scout/ledger.mjs";
 import { createPacketValidatorV02 } from "../packages/scout/validate-packet-v02.mjs";
-import { runScoutV02 } from "../packages/scout/runner-v02.mjs";
+import { extractActionV02, runScoutV02 } from "../packages/scout/runner-v02.mjs";
 import { packetToLibrarianBundle } from "../packages/scout/adapter-v02.mjs";
 import { packetId } from "../packages/scout/canonical.mjs";
 import { generateDogfoodReportV02 } from "../packages/scout/report-v02.mjs";
 import { summarizeLibrarianCandidate } from "../packages/scout/librarian-eval-v02-core.mjs";
 
 delete process.env.OPENROUTER_API_KEY; delete process.env.NVIDIA_NIM_API_KEY;
+assert.deepEqual(extractActionV02("```json\n{\"type\":\"finalize\"}\n```"), { type: "finalize" });
 const temp = path.join(import.meta.dirname, "tmp", "scout-v02"); fs.rmSync(temp, { recursive: true, force: true }); fs.mkdirSync(temp, { recursive: true });
 const repo = path.join(temp, "revision-source"); fs.mkdirSync(repo);
 const committedCatalog = `# Offers

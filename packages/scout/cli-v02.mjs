@@ -19,7 +19,7 @@ fs.mkdirSync(stateRoot, { recursive: true }); const artifacts = new ArtifactStor
 const packets = new PacketStore(stateRoot, createPacketValidatorV02(artifacts)); const key = providerEnvironmentKey(providerName);
 const provider = createCompatibleProvider({ provider: providerName, model, apiKey: process.env[key], timeoutMs: Number(option("timeout-ms", "120000")), maxTokens: Number(option("max-tokens", "5000")) });
 try {
-  const result = await runScoutV02({ seed: { kind, locator }, provider, artifactStore: artifacts, packetStore: packets, ledger, budgets, target_packet_count: targetCount, target_labels: targetLabels });
+  const result = await runScoutV02({ seed: { kind, locator }, provider, artifactStore: artifacts, packetStore: packets, ledger, budgets, target_packet_count: targetCount, target_labels: targetLabels, restricted_trace_root: path.join(stateRoot, "restricted-traces") });
   const reportPath = option("report", null);
   const command = `npm run scout:v02 -- --kind=${quote(kind)} --seed=${quote(locator)} --provider=${quote(providerName)} --model=${quote(model)}${targetsPath ? ` --targets=${quote(targetsPath)}` : ""} --target-packet-count=${targetCount} --max-requests=${budgets.max_requests} --max-pages=${budgets.max_pages} --max-bytes=${budgets.max_bytes} --max-elapsed-ms=${budgets.max_elapsed_ms} --max-inference-calls=${budgets.max_inference_calls} --max-depth=${budgets.max_depth} --state-dir=${quote(stateRoot)}${reportPath ? ` --report=${quote(reportPath)}` : ""}`;
   const manifestPath = path.join(stateRoot, "runs", `${result.run_id}-manifest.json`); fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
