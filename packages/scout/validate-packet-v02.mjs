@@ -95,7 +95,8 @@ export function createPacketValidatorV02(artifactStore) {
       if (!statementExcerpt || !finding.evidence_excerpt_ids.includes(finding.statement_excerpt_id) || normalize(statementExcerpt.text) !== normalize(finding.statement)) fail("finding statement must equal its selected source excerpt");
       const expectedAcquisitions = new Set(evidence.flatMap(({ artifact_id }) => [...(artifactOwners.get(artifact_id) ?? [])]));
       if (!finding.acquisition_ids.every((id) => expectedAcquisitions.has(id)) || !finding.acquisition_ids.length) fail("finding acquisition lineage is invalid");
-      for (const primitive of finding.parsed_values) if (!normalize(finding.statement).includes(normalize(primitive.source_text))) fail("parsed primitive is not traceable to the supporting statement");
+      const joined = normalize(evidence.map(({ text }) => text).join(" "));
+      for (const primitive of finding.parsed_values) if (!joined.includes(normalize(primitive.source_text))) fail("parsed primitive is not traceable to cited evidence");
       findings.set(finding.finding_id, finding);
     }
 
