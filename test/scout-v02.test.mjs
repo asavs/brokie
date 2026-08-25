@@ -11,6 +11,7 @@ import { packetId } from "../packages/scout/canonical.mjs";
 import { findingIdV02 } from "../packages/scout/identity-v02.mjs";
 import { generateDogfoodReportV02 } from "../packages/scout/report-v02.mjs";
 import { summarizeLibrarianCandidate } from "../packages/scout/librarian-eval-v02-core.mjs";
+import { createReadableArtifact } from "../packages/scout/readable-v02.mjs";
 
 delete process.env.OPENROUTER_API_KEY; delete process.env.NVIDIA_NIM_API_KEY;
 assert.deepEqual(extractActionV02("```json\n{\"type\":\"finalize\"}\n```"), { type: "finalize" });
@@ -99,6 +100,8 @@ class SubjectFailureProvider extends ResearchProvider {
 
 const budgets = { max_requests: 20, max_pages: 8, max_bytes: 1_000_000, max_elapsed_ms: 30_000, max_inference_calls: 16, max_depth: 2 };
 function state(name) { const root = path.join(temp, name), artifacts = new ArtifactStore(root), ledger = new ScoutLedger(path.join(root, "ledger.sqlite")), validator = createPacketValidatorV02(artifacts), packets = new PacketStore(root, validator); return { root, artifacts, ledger, validator, packets }; }
+const lineageState = state("readable-lineage"), dynamicA = Buffer.from("<html><script>nonce-a</script><body><p>Stable offer text.</p></body></html>"), dynamicB = Buffer.from("<html><script>nonce-b</script><body><p>Stable offer text.</p></body></html>"), rawA = lineageState.artifacts.put(dynamicA, { kind: "http_body", media_type: "text/html" }), rawB = lineageState.artifacts.put(dynamicB, { kind: "http_body", media_type: "text/html" }), readableA = createReadableArtifact(dynamicA, "text/html", lineageState.artifacts), readableB = createReadableArtifact(dynamicB, "text/html", lineageState.artifacts);
+assert.notEqual(rawA.artifact_id, rawB.artifact_id); assert.equal(readableA.artifact.artifact_id, readableB.artifact.artifact_id); assert.equal(readableB.artifact.storage_status, "reused"); lineageState.ledger.close();
 async function run(name, order, model, shared = null) { const value = shared ?? state(name); const result = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new ResearchProvider(order, model), artifactStore: value.artifacts, packetStore: value.packets, ledger: value.ledger, budgets, target_packet_count: order.length, target_labels: order, transport, lookup }); return { ...value, result }; }
 
 const shared = state("shared"), first = await run("first", ["Alpha", "Beta"], "route-a", shared);

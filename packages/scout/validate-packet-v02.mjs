@@ -37,7 +37,9 @@ export function createPacketValidatorV02(artifactStore) {
         let raw, readable;
         try { raw = artifactStore.read(acquisition.raw_artifact_id); readable = artifactStore.read(acquisition.readable_artifact_id); } catch { fail("missing or corrupt acquisition artifact"); }
         if (acquisition.raw_artifact_id !== acquisition.readable_artifact_id) {
-          if (readable.manifest.kind !== "derived_text" || readable.manifest.derived_from_artifact_id !== acquisition.raw_artifact_id || readable.manifest.transformation !== acquisition.transformation) fail("readable artifact lineage is invalid");
+          const legacyLineage = readable.manifest.kind === "derived_text" && readable.manifest.transformation === acquisition.transformation;
+          const packetLineage = readable.manifest.kind === "readable_text" && ["html-readable-text@0.2.0", "utf8-readable-text@0.2.0"].includes(acquisition.transformation);
+          if (!legacyLineage && !packetLineage) fail("readable artifact lineage is invalid");
         } else if (acquisition.transformation !== null) fail("identity readable artifact cannot claim a transformation");
         for (const artifactId of new Set([acquisition.raw_artifact_id, acquisition.readable_artifact_id])) {
           const owners = artifactOwners.get(artifactId) ?? new Set(); owners.add(acquisition.acquisition_id); artifactOwners.set(artifactId, owners);

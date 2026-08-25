@@ -40,13 +40,15 @@ export function createReadableArtifact(rawBytes, mediaType, artifactStore) {
   if (mediaType === "text/html" && rawBytes.length > 20_000 && bytes.length < 500) incompleteReasons.push("readable_content_sparse");
   const incomplete = incompleteReasons.length > 0;
   if (bytes.equals(Buffer.from(rawBytes))) return { artifact: artifactStore.read(rawArtifactId).manifest, bytes, incomplete, incompleteReasons, transformation: null };
-  const artifact = artifactStore.put(bytes, {
-    kind: "derived_text",
-    media_type: "text/plain",
-    derived_from_artifact_id: rawArtifactId,
-    transformation: mediaType === "text/html" ? TRANSFORMATION : "utf8-readable-text@0.2.0",
-  });
-  return { artifact, bytes, incomplete, incompleteReasons, transformation: artifact.transformation };
+  const transformation = mediaType === "text/html" ? TRANSFORMATION : "utf8-readable-text@0.2.0";
+  const readableArtifactId = `art_sha256_${sha256(bytes)}`;
+  try {
+    const existing = artifactStore.read(readableArtifactId).manifest;
+    if (!["derived_text", "readable_text"].includes(existing.kind) || existing.media_type !== "text/plain") throw new Error("readable artifact identity collides with a non-readable representation");
+    return { artifact: { ...existing, storage_status: "reused" }, bytes, incomplete, incompleteReasons, transformation };
+  } catch (error) { if (error.code !== "ENOENT") throw error; }
+  const artifact = artifactStore.put(bytes, { kind: "readable_text", media_type: "text/plain" });
+  return { artifact, bytes, incomplete, incompleteReasons, transformation };
 }
 
 function utf8End(bytes, proposed) {

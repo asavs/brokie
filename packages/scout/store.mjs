@@ -48,10 +48,10 @@ export class ArtifactStore {
     return { body: path.join(dir, `${artifactId}.bin`), manifest: path.join(dir, `${artifactId}.json`) };
   }
   put(bytes, metadata) {
-    if (!["repository_file", "http_body", "derived_text"].includes(metadata.kind)) throw new Error("invalid artifact kind");
+    if (!["repository_file", "http_body", "derived_text", "readable_text"].includes(metadata.kind)) throw new Error("invalid artifact kind");
     if (typeof metadata.media_type !== "string" || !metadata.media_type) throw new Error("artifact media_type is required");
     if (metadata.kind === "derived_text" && (!metadata.derived_from_artifact_id || !metadata.transformation)) throw new Error("derived_text requires source artifact and transformation");
-    if (metadata.kind !== "derived_text" && (metadata.derived_from_artifact_id || metadata.transformation)) throw new Error("only derived_text may have derivation metadata");
+    if (metadata.kind !== "derived_text" && (metadata.derived_from_artifact_id || metadata.transformation)) throw new Error("only legacy derived_text may have derivation metadata");
     const body = Buffer.from(bytes);
     const hash = sha256(body);
     const artifact_id = `art_sha256_${hash}`;
