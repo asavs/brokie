@@ -27,6 +27,8 @@ export function createPacketValidatorV02(artifactStore) {
       if (acquired !== Boolean(acquisition.raw_artifact_id) || acquired !== Boolean(acquisition.readable_artifact_id)) fail("acquired artifacts are incoherent");
       if (acquired && acquisition.failure !== null) fail("acquired page cannot have failure");
       if (!acquired && (acquisition.failure === null || acquisition.content_state !== "blocked")) fail("failed acquisition must be blocked and normalized");
+      if (acquisition.content_state === "content_incomplete" && acquisition.content_reasons.length === 0) fail("content-incomplete acquisition requires reasons");
+      if (acquisition.content_state === "resolved" && acquisition.content_reasons.length > 0) fail("resolved acquisition cannot retain incompleteness reasons");
       if (acquisition.role === "collection_listing" && (acquisition.depth !== 0 || acquisition.parent_acquisition_id !== null || acquisition.originating_link !== null)) fail("collection listing lineage is invalid");
       if (acquisition.role === "listed_page" && acquisition.depth !== 1) fail("listed page must be depth 1");
       if (acquisition.role === "evidence_page" && acquisition.depth !== 2) fail("evidence page must be depth 2");

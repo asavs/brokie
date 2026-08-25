@@ -66,6 +66,7 @@ function initialMessages(record, observation) {
           source_category: record.source_category || null,
           source_platform: record.source_platform || null,
         },
+        scout_evidence_bundle: record.scout_evidence_bundle || null,
         source_text: observation.source_text,
         controlled_vocabulary: vocabulary,
         output_schema: contractSchema,

@@ -35,18 +35,18 @@ export function createReadableArtifact(rawBytes, mediaType, artifactStore) {
   let bytes = Buffer.from(readableText, "utf8");
   const rawArtifactId = `art_sha256_${sha256(rawBytes)}`;
   if (mediaType === "text/html" && bytes.equals(Buffer.from(rawBytes))) bytes = Buffer.concat([bytes, Buffer.from("\n")]);
-  const incomplete = mediaType === "text/html" && (
-    /enable javascript|javascript (?:is )?required|please turn on javascript/i.test(readableText) ||
-    (rawBytes.length > 20_000 && bytes.length < 500)
-  );
-  if (bytes.equals(Buffer.from(rawBytes))) return { artifact: artifactStore.read(rawArtifactId).manifest, bytes, incomplete, transformation: null };
+  const incompleteReasons = [];
+  if (mediaType === "text/html" && /enable javascript|javascript (?:is )?required|please turn on javascript/i.test(`${rawText}\n${readableText}`)) incompleteReasons.push("browser_required");
+  if (mediaType === "text/html" && rawBytes.length > 20_000 && bytes.length < 500) incompleteReasons.push("readable_content_sparse");
+  const incomplete = incompleteReasons.length > 0;
+  if (bytes.equals(Buffer.from(rawBytes))) return { artifact: artifactStore.read(rawArtifactId).manifest, bytes, incomplete, incompleteReasons, transformation: null };
   const artifact = artifactStore.put(bytes, {
     kind: "derived_text",
     media_type: "text/plain",
     derived_from_artifact_id: rawArtifactId,
     transformation: mediaType === "text/html" ? TRANSFORMATION : "utf8-readable-text@0.2.0",
   });
-  return { artifact, bytes, incomplete, transformation: artifact.transformation };
+  return { artifact, bytes, incomplete, incompleteReasons, transformation: artifact.transformation };
 }
 
 function utf8End(bytes, proposed) {

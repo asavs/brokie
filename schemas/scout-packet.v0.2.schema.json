@@ -94,7 +94,7 @@
     },
     "acquisition": {
       "type": "object", "additionalProperties": false,
-      "required": ["acquisition_id", "role", "requested_locator", "final_locator", "depth", "status", "content_state", "raw_artifact_id", "readable_artifact_id", "transformation", "parent_acquisition_id", "originating_link", "http_status", "failure", "authority", "selected_excerpt_ids"],
+      "required": ["acquisition_id", "role", "requested_locator", "final_locator", "depth", "status", "content_state", "content_reasons", "raw_artifact_id", "readable_artifact_id", "transformation", "parent_acquisition_id", "originating_link", "http_status", "failure", "authority", "selected_excerpt_ids"],
       "properties": {
         "acquisition_id": { "$ref": "#/$defs/acquisitionId" },
         "role": { "enum": ["collection_listing", "listed_page", "evidence_page"] },
@@ -103,6 +103,7 @@
         "depth": { "type": "integer", "minimum": 0, "maximum": 2 },
         "status": { "enum": ["acquired", "blocked", "failed"] },
         "content_state": { "enum": ["resolved", "inspected", "content_incomplete", "blocked"] },
+        "content_reasons": { "type": "array", "items": { "enum": ["browser_required", "readable_content_sparse"] }, "uniqueItems": true },
         "raw_artifact_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/artifactId" }] },
         "readable_artifact_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/artifactId" }] },
         "transformation": { "type": ["string", "null"] },

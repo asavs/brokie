@@ -9,6 +9,7 @@ import { createCompatibleProvider, providerEnvironmentKey } from "./provider.mjs
 import { runLibrarianV01 } from "./run-v0.1-core.mjs";
 import { ArtifactStore } from "../scout/store.mjs";
 import { packetToLibrarianRecord } from "../scout/adapter.mjs";
+import { packetToLibrarianBundle } from "../scout/adapter-v02.mjs";
 
 const cli = process.argv.slice(2);
 const option = (name, fallback) =>
@@ -32,8 +33,10 @@ if ([recordPath, sourceId, packetPath].filter(Boolean).length !== 1) {
 let record;
 if (packetPath) {
   const packet = JSON.parse(fs.readFileSync(path.resolve(packetPath), "utf8"));
-  const scoutState = path.resolve(option("scout-state", path.join(root, "var", "scout-v0.1")));
-  record = packetToLibrarianRecord(packet, new ArtifactStore(scoutState));
+  const defaultScoutState = packet.schema_version === "0.2.0" ? "scout-v0.2" : "scout-v0.1";
+  const scoutState = path.resolve(option("scout-state", path.join(root, "var", defaultScoutState)));
+  const artifacts = new ArtifactStore(scoutState);
+  record = packet.schema_version === "0.2.0" ? packetToLibrarianBundle(packet, artifacts).record : packetToLibrarianRecord(packet, artifacts);
 } else if (recordPath) {
   record = JSON.parse(fs.readFileSync(path.resolve(recordPath), "utf8"));
   if (record.record) record = record.record;
