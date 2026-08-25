@@ -1,0 +1,293 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Brokie read API",
+    "version": "0.1.1",
+    "description": "Read-only access to Brokie's trusted catalog projection. Model proposals and unreviewed revisions are never returned as published opportunities."
+  },
+  "servers": [
+    { "url": "/" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Inspect service and catalog health",
+        "responses": {
+          "200": {
+            "description": "Service and catalog metadata",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/coverage": {
+      "get": {
+        "operationId": "getCoverage",
+        "summary": "Distinguish known catalog coverage from published coverage",
+        "responses": {
+          "200": {
+            "description": "Typed catalog coverage counts",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CoverageResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/capabilities": {
+      "get": {
+        "operationId": "listCapabilities",
+        "summary": "List capabilities represented by published opportunities",
+        "responses": {
+          "200": {
+            "description": "Published capability facets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Capability" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/opportunities": {
+      "get": {
+        "operationId": "searchOpportunities",
+        "summary": "Search trusted opportunities",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Literal full-text terms; all terms must match",
+            "schema": { "type": "string", "maxLength": 512 }
+          },
+          {
+            "name": "capability",
+            "in": "query",
+            "description": "Required capability facet. Repeat to require several facets.",
+            "schema": { "type": "array", "maxItems": 8, "items": { "type": "string", "maxLength": 128 } },
+            "explode": true
+          },
+          {
+            "name": "need",
+            "in": "query",
+            "deprecated": true,
+            "description": "Compatibility alias for capability. Repeat semantics are identical.",
+            "schema": { "type": "array", "maxItems": 8, "items": { "type": "string", "maxLength": 128 } },
+            "explode": true
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked published opportunities",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OpportunityListResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      }
+    },
+    "/v1/opportunities/{opportunityId}": {
+      "get": {
+        "operationId": "getOpportunity",
+        "summary": "Get one trusted opportunity",
+        "parameters": [
+          {
+            "name": "opportunityId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published opportunity with typed evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "$ref": "#/components/schemas/OpportunityResult" } }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/evidence/{sourceSnapshotId}/{evidenceId}": {
+      "get": {
+        "operationId": "getEvidence",
+        "summary": "Get one evidence span used by a published revision",
+        "parameters": [
+          { "name": "sourceSnapshotId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "evidenceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evidence and source observation metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "$ref": "#/components/schemas/Evidence" } }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/reviews": {
+      "get": {
+        "operationId": "listReviews",
+        "summary": "Inspect the read-only review queue",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["open", "processed"], "default": "open" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review queue entries",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GenericListResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Capability": {
+        "type": "object",
+        "required": ["id", "label", "count"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "count": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "Coverage": {
+        "type": "object",
+        "required": ["known_products", "known_opportunities", "product_revisions", "opportunity_revisions", "published_opportunities"],
+        "properties": {
+          "known_products": { "type": "integer", "minimum": 0 },
+          "known_opportunities": { "type": "integer", "minimum": 0 },
+          "product_revisions": { "type": "integer", "minimum": 0 },
+          "opportunity_revisions": { "type": "integer", "minimum": 0 },
+          "published_opportunities": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "catalog"],
+        "properties": {
+          "status": { "const": "ok" },
+          "catalog": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "CoverageResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": { "data": { "$ref": "#/components/schemas/Coverage" } }
+      },
+      "Evidence": {
+        "type": "object",
+        "required": ["source_snapshot_id", "evidence_id", "quote"],
+        "properties": {
+          "source_snapshot_id": { "type": "string" },
+          "evidence_id": { "type": "string" },
+          "quote": { "type": "string" },
+          "start_offset": { "type": ["integer", "null"] },
+          "end_offset": { "type": ["integer", "null"] },
+          "source": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "OpportunityResult": {
+        "type": "object",
+        "required": ["id", "type", "coverage", "publication", "product", "opportunity", "facets", "capabilities", "sources", "evidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "const": "opportunity" },
+          "coverage": {
+            "type": "object",
+            "required": ["state"],
+            "properties": { "state": { "const": "published" } }
+          },
+          "publication": { "type": "object", "additionalProperties": true },
+          "product": { "type": "object", "additionalProperties": true },
+          "opportunity": { "type": "object", "additionalProperties": true },
+          "facets": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "capabilities": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "sources": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "evidence": { "type": "array", "items": { "$ref": "#/components/schemas/Evidence" } }
+        }
+      },
+      "OpportunityListResponse": {
+        "type": "object",
+        "required": ["data", "count"],
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/OpportunityResult" } },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "GenericListResponse": {
+        "type": "object",
+        "required": ["data", "count"],
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "InvalidRequest": {
+        "description": "Invalid request",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "Resource not found or not published",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    }
+  }
+}
