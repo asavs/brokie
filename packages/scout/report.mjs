@@ -67,7 +67,7 @@ Generated from the persistent Scout ledger and its referenced immutable packets.
 | Inference calls | ${configured.max_inference_calls} | ${consumed.inference_calls ?? 0} |
 | Acquisition depth | ${configured.max_depth} | ${consumed.max_depth ?? 0} |
 
-The elapsed deadline governs model and tool work. The consumed wall time includes harness-owned packet finalization after an in-flight call is aborted at that deadline.
+The elapsed deadline governs model and tool work. Consumed wall time also includes harness-owned packet finalization; an in-flight call is aborted at the deadline before that finalization begins.
 
 ## Catalog boundary
 
