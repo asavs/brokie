@@ -4,7 +4,7 @@ Status: authoritative living product direction
 
 Last reconciled: 2026-08-24
 
-Current release: `0.1.0`
+Current release: `0.1.1`
 
 This document exists so implementation details cannot quietly replace the product. It records the current long-term mission, role boundaries, trust model, and sequencing decisions. The product brief remains the detailed decision archive; this is the compact source of truth.
 
@@ -194,9 +194,9 @@ Initial subject scope excludes personalized legal, tax, investment, debt, insura
 - Do not build a distributed system merely because several free VMs are available; add isolation only when measurements justify it.
 - Before provisioning, verify current free-tier shapes, storage, egress, tenancy eligibility, and other assumptions against official provider terms.
 
-## Current state: release 0.1.0
+## Current state: release 0.1.1
 
-`0.1.0` proves the typed Librarian transaction:
+`0.1.0` proved the typed Librarian transaction. `0.1.1` hardens and connects its trusted publication path:
 
 - versioned candidate schema and controlled vocabulary;
 - exact evidence and semantic validation;
@@ -206,19 +206,22 @@ Initial subject scope excludes personalized legal, tax, investment, debt, insura
 - one bounded model repair attempt;
 - free OpenRouter and NVIDIA provider adapters;
 - inspectable traces and retained calibration failures;
-- review decisions separated from publication;
-- a legacy local search API, refresh worker, and Linux service skeleton.
+- recoverable `trust`, `reject`, and `request_revision` review events separated from model output;
+- trusted typed publication views served through the read-only API and explorer;
+- published capability search, coverage reporting, scoped evidence retrieval, and an OpenAPI contract;
+- bounded API validation and typed regression fixtures;
+- a legacy source refresh worker and Linux service skeleton.
 
 It is not yet a continuous autonomous Librarian or an end-user savings product.
 
-The principal architectural debt is two parallel data paths:
+The trusted typed read path is now connected. The principal remaining integration debt is that source acquisition and refresh still use the legacy path:
 
 ```text
-legacy deterministic importer -> legacy database -> refresh/API
-single-record typed Librarian  -> typed database  -> revision review
+legacy deterministic importer -> legacy snapshots and refresh
+single-record typed Librarian  -> typed review/trust -> typed API and explorer
 ```
 
-These must converge on the typed catalog and published revision views.
+The Scout-to-Librarian loop must replace the legacy acquisition boundary while preserving the working trusted publication projection.
 
 ## Next milestone: Scout-to-Librarian loop
 
@@ -232,7 +235,7 @@ The next implementation milestone should resist broad platform work and establis
 6. Let the existing Librarian consume packets, deduplicate subjects, and create typed candidate revisions.
 7. Support typed Librarian requests for supplemental Scout investigation.
 8. Make acquisition and ingestion repeatable, resumable, idempotent, budgeted, and change-aware.
-9. Converge refresh, publication, API, and explorer behavior on accepted typed revisions.
+9. Complete refresh convergence on accepted typed revisions while preserving the typed API and explorer introduced in `0.1.1`.
 10. Deploy the closed local loop to one Oracle VM for an unattended soak before adding public autonomy.
 
 The Scout should explore unfamiliar sources and may compile successful approaches into replayable plans. Those plans are versioned run artifacts, not source-specific behavior embedded in the core architecture. Bulk work should replay deterministically until validation indicates that the source changed enough to require the Scout again.

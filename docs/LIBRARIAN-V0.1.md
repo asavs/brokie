@@ -41,7 +41,17 @@ The process reads `OPENROUTER_API_KEY` or `NVIDIA_NIM_API_KEY`. It refuses a pai
 
 Each provider attempt is written immediately to the state database. A JSON trace also records raw output, reasoning when supplied, normalization actions, validation failures, token usage, identity decisions, and final disposition.
 
-Review decisions are recorded separately as `accepted`, `rejected`, or `deferred`; processing a review does not rewrite the immutable candidate revision. Rejected live outputs may be retained as calibration fixtures so their failure modes remain covered by tests.
+Review decisions are recorded separately as `accepted`, `rejected`, or `deferred`; processing a review does not rewrite the immutable candidate revision. The decision command appends `trust`, `reject`, or `request_revision` events to the catalog and then finalizes the operational queue. Event IDs are deterministic, so an interrupted decision can be retried without duplicating or changing the publication decision. Rejected live outputs may be retained as calibration fixtures so their failure modes remain covered by tests.
+
+```bash
+npm run review:v01 -- list
+npm run review:v01 -- show REVIEW_ID
+npm run review:v01 -- decide REVIEW_ID accepted \
+  --note="Evidence verified" \
+  --reviewer=YOUR_ID
+```
+
+The command defaults to the two databases under `var/v0.1`. Use `--state=<path>` and `--catalog=<path>` together when reviewing another state directory. Only a trusted product revision whose opportunity revision is also trusted appears in the published API projection.
 
 ## State layout
 

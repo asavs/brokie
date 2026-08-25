@@ -2,7 +2,7 @@
 
 > **Document role:** detailed planning and decision archive. For the authoritative current mission, role boundaries, and implementation horizon, read [`NORTH-STAR.md`](NORTH-STAR.md). Where the two disagree, the north star records the later decision.
 
-Status: detailed decision archive; implementation began with releases `0.0.1` and `0.1.0`
+Status: detailed decision archive; implementation began with releases `0.0.1`, `0.1.0`, and `0.1.1`
 
 ## Confirmed initial decisions
 
@@ -392,6 +392,8 @@ The same knowledge base should support:
 - Change history and freshness scores.
 
 Agent responses should contain ranked candidates or plans, citations, qualification reasoning, conflicts, assumptions, and missing information. They should not merely return records containing matching words.
+
+The working [agent-access and Firecrawl implementation study](AGENT-ACCESS.md) expands this direction with emerging build and inspiration request modes, a skill-led and API-first access model, observed implementation lessons, response-contract requirements, and a development checklist. Its interface names and sequence remain provisional.
 
 ## Brokie as an autonomous meta-SaaS
 
