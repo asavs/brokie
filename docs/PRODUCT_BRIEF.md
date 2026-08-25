@@ -391,6 +391,8 @@ The same knowledge base should support:
 
 Agent responses should contain ranked candidates or plans, citations, qualification reasoning, conflicts, assumptions, and missing information. They should not merely return records containing matching words.
 
+The working [agent-access and Firecrawl implementation study](AGENT-ACCESS.md) expands this direction with emerging build and inspiration request modes, a skill-led and API-first access model, observed implementation lessons, response-contract requirements, and a development checklist. Its interface names and sequence remain provisional.
+
 ## Brokie as an autonomous meta-SaaS
 
 The public product should be composed of several roles with separate permissions rather than one omnipotent agent.
