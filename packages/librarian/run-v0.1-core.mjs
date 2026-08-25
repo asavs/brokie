@@ -178,7 +178,7 @@ export async function runLibrarianV01({
         if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
           throw new Error("response JSON must be one candidate object");
         }
-        const normalized = normalizeCandidateShape(candidate);
+        const normalized = normalizeCandidateShape(candidate, observation.source_text, { dropOpportunitiesWithoutCapability: Boolean(record.scout_evidence_bundle) });
         candidate = normalized.candidate;
         normalizationActions = normalized.actions;
       } catch (parseError) {

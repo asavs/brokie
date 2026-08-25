@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { prepareSourceObservation } from "../packages/catalog/identity-plan.mjs";
-import { normalizeCandidateShape } from "../packages/catalog/normalize-candidate.mjs";
+import { normalizeCandidateShape, recoverExactEvidenceQuote } from "../packages/catalog/normalize-candidate.mjs";
 import { createCatalogStore } from "../packages/catalog/store.mjs";
 import { validateCandidateDocument } from "../packages/catalog/validate-candidate.mjs";
 import { createCompatibleProvider } from "../packages/librarian/provider.mjs";
@@ -24,6 +24,8 @@ const fixture = JSON.parse(
     "utf8",
   ),
 );
+assert.equal(recoverExactEvidenceQuote("Alpha\n  has   five projects. More text.", "Alpha has five projects."), "Alpha\n  has   five projects.");
+assert.equal(recoverExactEvidenceQuote("First exact sentence. Unrelated source text.", "First exact sentence. Invented second sentence."), "First exact sentence.");
 const record = {
   source_id: "src_fixture_telemetry",
   source_kind: "free_for_dev_readme",

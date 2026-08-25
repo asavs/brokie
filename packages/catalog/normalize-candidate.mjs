@@ -8,6 +8,24 @@ function evidenceForText(evidenceSpans, text) {
   )?.id;
 }
 
+export function recoverExactEvidenceQuote(sourceText, quote) {
+  if (typeof sourceText !== "string" || typeof quote !== "string" || !quote.trim()) return null;
+  if (sourceText.includes(quote)) return quote;
+  let normalized = "", starts = [], ends = [], inWhitespace = false;
+  for (let index = 0; index < sourceText.length; index += 1) {
+    const character = sourceText[index];
+    if (/\s/.test(character)) {
+      if (!inWhitespace && normalized.length) { normalized += " "; starts.push(index); ends.push(index + 1); }
+      else if (inWhitespace && ends.length) ends[ends.length - 1] = index + 1;
+      inWhitespace = true;
+    } else { normalized += character; starts.push(index); ends.push(index + 1); inWhitespace = false; }
+  }
+  const wanted = quote.replace(/\s+/g, " ").trim(), match = normalized.indexOf(wanted);
+  if (match >= 0 && normalized.indexOf(wanted, match + 1) < 0) return sourceText.slice(starts[match], ends[match + wanted.length - 1]);
+  const exactParts = quote.split(/(?<=[.!?])\s+/).map((part) => part.trim()).filter((part) => part.length >= 20 && sourceText.includes(part)).sort((a, b) => b.length - a.length || a.localeCompare(b));
+  return exactParts[0] ?? null;
+}
+
 function supportedText(value, evidenceSpans, path, actions) {
   if (typeof value !== "string") return value;
   const evidenceId = evidenceForText(evidenceSpans, value);
@@ -43,7 +61,7 @@ function functionOnlyDescription(description, actions) {
   };
 }
 
-export function normalizeCandidateShape(input) {
+export function normalizeCandidateShape(input, sourceText = "", options = {}) {
   const candidate = structuredClone(input);
   const actions = [];
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
@@ -52,6 +70,11 @@ export function normalizeCandidateShape(input) {
   const evidenceSpans = Array.isArray(candidate.evidence_spans)
     ? candidate.evidence_spans
     : [];
+  for (const evidence of evidenceSpans) {
+    if (!sourceText || sourceText.includes(evidence.quote)) continue;
+    const recovered = recoverExactEvidenceQuote(sourceText, evidence.quote);
+    if (recovered) { evidence.quote = recovered; actions.push(`${evidence.id}: restored an exact source quote`); }
+  }
   const evidenceById = new Map(evidenceSpans.map((evidence) => [evidence.id, evidence]));
   const supportText = (support) =>
     (support?.evidence_ids ?? [])
@@ -89,9 +112,17 @@ export function normalizeCandidateShape(input) {
           return true;
         });
     }
+    if (Array.isArray(candidate.product.links)) candidate.product.links = candidate.product.links.filter((link, index) => {
+      if (supportText(link.support).includes(link.url)) return true;
+      actions.push(`product.links.${index}: removed link without URL evidence`); return false;
+    });
   }
 
   for (const [opportunityIndex, opportunity] of (candidate.opportunities ?? []).entries()) {
+    if (Array.isArray(opportunity.links)) opportunity.links = opportunity.links.filter((link, linkIndex) => {
+      if (supportText(link.support).includes(link.url)) return true;
+      actions.push(`opportunities.${opportunityIndex}.links.${linkIndex}: removed link without URL evidence`); return false;
+    });
     opportunity.variant_label = supportedText(
       opportunity.variant_label,
       evidenceSpans,
@@ -198,6 +229,10 @@ export function normalizeCandidateShape(input) {
         }
       }
     }
+  }
+  if (options.dropOpportunitiesWithoutCapability && (candidate.opportunities ?? []).length && !(candidate.product?.facets ?? []).some(({ namespace }) => namespace === "capability")) {
+    candidate.opportunities = [];
+    actions.push("opportunities: removed because no controlled capability facet survived");
   }
   return { candidate, actions };
 }
