@@ -14,9 +14,9 @@ export function summarizeLibrarianCandidate(candidate) {
   const name = text(candidate.product.proposed_canonical_name) || candidate.product.source_name || "Unnamed product";
   const description = text(candidate.product.description);
   const opportunities = candidate.opportunities.map((opportunity) => {
-    const label = opportunity.plan_label || opportunity.variant_label || opportunity.local_key;
+    const label = text(opportunity.plan_label) || text(opportunity.variant_label) || opportunity.local_key;
     const entitlements = (opportunity.entitlements ?? []).map(({ label: itemLabel, quantity, monetary_value, percentage_value }) => {
-      if (itemLabel) return itemLabel;
+      if (itemLabel) return text(itemLabel) || "unnamed benefit";
       if (quantity?.value != null) return `${quantity.value} ${quantity.source_unit ?? "units"}`;
       if (monetary_value?.amount != null) return `${monetary_value.amount} ${monetary_value.currency ?? "currency"}`;
       if (percentage_value != null) return `${percentage_value}%`;

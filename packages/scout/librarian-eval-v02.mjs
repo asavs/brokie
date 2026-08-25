@@ -16,8 +16,10 @@ import { createPacketValidatorV02 } from "./validate-packet-v02.mjs";
 const args = process.argv.slice(2), option = (name, fallback = null) => args.find((item) => item.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const stateRoot = path.resolve(option("state-dir", "var/scout-v0.2")), runId = option("run-id"), packetSetPath = option("packet-set"), providerName = option("provider", "openrouter"), model = option("model", providerName === "openrouter" ? "openrouter/free" : null);
 const maxTokens = Number(option("max-tokens", "6000")), timeoutMs = Number(option("timeout-ms", "120000"));
+const stateLabel = option("state-label", "");
 if ((!runId && !packetSetPath) || (runId && packetSetPath) || !model) throw new Error("use exactly one of --run-id or --packet-set, and provide --model");
 if (!Number.isInteger(maxTokens) || maxTokens < 1 || !Number.isInteger(timeoutMs) || timeoutMs < 1) throw new Error("invalid Librarian limits");
+if (stateLabel && !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(stateLabel)) throw new Error("invalid --state-label");
 
 const ledger = new ScoutLedger(path.join(stateRoot, "scout-ledger.sqlite"));
 const artifacts = new ArtifactStore(stateRoot), packets = new PacketStore(stateRoot, createPacketValidatorV02(artifacts));
@@ -47,7 +49,7 @@ const results = [];
 try {
   for (const { packet_id: packetId, run } of selections) {
     const packet = packets.read(packetId), { record } = packetToLibrarianBundle(packet, artifacts);
-    const subjectRoot = path.join(stateRoot, "librarian", packet.packet_id), catalogPath = path.join(subjectRoot, "catalog-v0.1.sqlite"), statePath = path.join(subjectRoot, "brokie-state.sqlite");
+    const subjectRoot = path.join(stateRoot, "librarian", ...(stateLabel ? [stateLabel] : []), packet.packet_id), catalogPath = path.join(subjectRoot, "catalog-v0.1.sqlite"), statePath = path.join(subjectRoot, "brokie-state.sqlite");
     fs.mkdirSync(subjectRoot, { recursive: true });
     const catalog = new DatabaseSync(catalogPath); createCatalogStore(catalog); const state = openState(statePath);
     try {
@@ -58,7 +60,7 @@ try {
       results.push({ source_label: packet.subject.source_label, scout_packet_id: packet.packet_id, source_scout_run_id: run.run_id, status: result.status, run_id: result.run_id, provider: providerName, requested_model: model, resolved_model: result.resolved_model ?? "", attempts: result.attempts, max_attempts: 2, max_tokens: maxTokens, candidate_summary: candidate ? summarizeLibrarianCandidate(candidate) : null, error: result.error ? String(result.error).replace(/\s+/g, " ").slice(0, 900) : null, state_path: subjectRoot });
     } finally { catalog.close(); state.close(); }
   }
-  const resultsPath = path.resolve(option("results", path.join(stateRoot, "runs", `${evaluationId}-librarian-results.json`)));
+  const resultsPath = path.resolve(option("results", path.join(stateRoot, "runs", `${evaluationId}${stateLabel ? `-${stateLabel}` : ""}-librarian-results.json`)));
   fs.mkdirSync(path.dirname(resultsPath), { recursive: true }); fs.writeFileSync(resultsPath, `${JSON.stringify(results, null, 2)}\n`);
   const manifestPath = runId ? path.join(stateRoot, "runs", `${runId}-manifest.json`) : null, manifest = manifestPath && fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, "utf8")) : null;
   const reportPath = option("report", manifest?.report_path ?? null);

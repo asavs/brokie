@@ -30,8 +30,11 @@ export function packetToLibrarianBundle(packet, artifactStore) {
   };
   const listing = excerpts.get(packet.subject.collection_excerpt_id);
   const parts = [`--- collection listing | scout_excerpt_id=${listing.excerpt_id} | artifact=${listing.artifact_id} ---\n${listing.text}`];
-  for (const finding of packet.findings) {
-    parts.push(`--- scout finding | topic=${finding.topic} | finding_id=${finding.finding_id} | scout_excerpt_ids=${finding.evidence_excerpt_ids.join(",")} ---\n${finding.statement}`);
+  for (const acquisition of packet.acquisitions.filter(({ depth }) => depth > 0)) {
+    parts.push(`--- scout acquisition | acquisition_id=${acquisition.acquisition_id} | role=${acquisition.role} ---\nrequested_url: ${acquisition.requested_locator}\nfinal_url: ${acquisition.final_locator}`);
+  }
+  for (const excerpt of packet.excerpts.filter(({ role }) => role === "research_evidence")) {
+    parts.push(`--- exact selected evidence | scout_excerpt_id=${excerpt.excerpt_id} | artifact=${excerpt.artifact_id} ---\n${excerpt.text}`);
   }
   let platform = "scout";
   if (packet.seed.kind === "web") { try { platform = new URL(packet.seed.locator).hostname.toLowerCase(); } catch {} }

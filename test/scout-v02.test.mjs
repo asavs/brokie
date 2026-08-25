@@ -198,6 +198,7 @@ assert.deepEqual(third.result.packets.map(({ packet }) => packet.packet_id).sort
 const { record, bundle } = packetToLibrarianBundle(alpha, first.artifacts);
 assert.equal(bundle.scout_packet_id, alpha.packet_id); assert.equal(bundle.findings.length, alpha.findings.length); assert.equal(bundle.research_outcomes.length, 5);
 assert.ok(record.raw_text.length < 10_000); assert.doesNotMatch(record.raw_text, /<html>|Ignore prior instructions/); assert.equal(record.scout_evidence_bundle.conflicts.length, 1);
+assert.match(record.raw_text, /final_url: https:\/\/alpha\.example\/plans/); for (const excerpt of alpha.excerpts.filter(({ role }) => role === "research_evidence")) assert.ok(record.raw_text.includes(excerpt.text));
 assert.match(summarizeLibrarianCandidate({ product: { source_name: "Alpha", description: "A bounded fixture." }, opportunities: [{ local_key: "free", plan_label: "Starter", entitlements: [{ label: "10 projects monthly" }] }] }), /Alpha.*Starter.*10 projects monthly/);
 
 const invalid = structuredClone(beta); invalid.research_outcomes[0] = { topic: "benefit", status: "answered", finding_ids: [], conflict_ids: [], unresolved_questions: [] }; invalid.packet_id = packetId(invalid);
