@@ -116,6 +116,23 @@ class MissingComparisonProvider extends ResearchProvider {
   }
 }
 
+class MixedSourceProvider extends ResearchProvider {
+  async complete(messages) {
+    const reply = await super.complete(messages), action = JSON.parse(reply.content);
+    if (action.type === "record_research" && action.findings.some(({ statement_segment_id }) => statement_segment_id.endsWith(":listing"))) {
+      const collection = action.findings[1], linked = action.findings[2];
+      action.findings.splice(1, 2, { ...linked, evidence_segment_ids: [...new Set([...collection.evidence_segment_ids, ...linked.evidence_segment_ids])], parsed_values: [...collection.parsed_values, ...linked.parsed_values] });
+      action.conflicts = [{ ...action.conflicts[0], finding_indexes: [1, 1] }];
+      action.outcomes = action.outcomes.map((outcome) => {
+        if (outcome.topic === "numerical_limits") return { ...outcome, finding_indexes: [1] };
+        return { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 2 ? index - 1 : index) };
+      });
+      return { ...reply, content: JSON.stringify(action) };
+    }
+    return reply;
+  }
+}
+
 const budgets = { max_requests: 20, max_pages: 8, max_bytes: 1_000_000, max_elapsed_ms: 30_000, max_inference_calls: 16, max_depth: 2 };
 function state(name) { const root = path.join(temp, name), artifacts = new ArtifactStore(root), ledger = new ScoutLedger(path.join(root, "ledger.sqlite")), validator = createPacketValidatorV02(artifacts), packets = new PacketStore(root, validator); return { root, artifacts, ledger, validator, packets }; }
 const lineageState = state("readable-lineage"), dynamicA = Buffer.from("<html><script>nonce-a</script><body><p>Stable offer text.</p></body></html>"), dynamicB = Buffer.from("<html><script>nonce-b</script><body><p>Stable offer text.</p></body></html>"), rawA = lineageState.artifacts.put(dynamicA, { kind: "http_body", media_type: "text/html" }), rawB = lineageState.artifacts.put(dynamicB, { kind: "http_body", media_type: "text/html" }), readableA = createReadableArtifact(dynamicA, "text/html", lineageState.artifacts), readableB = createReadableArtifact(dynamicB, "text/html", lineageState.artifacts);
@@ -143,6 +160,10 @@ const comparisonState = state("comparison-recovery"), comparisonResult = await r
 assert.equal(comparisonResult.status, "completed"); assert.equal(comparisonResult.packets[0].packet.conflicts.length, 1);
 assert.equal(comparisonState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action'").get(comparisonResult.run_id).count, 1); comparisonState.ledger.close();
 
+const mixedState = state("mixed-source-recovery"), mixedResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new MixedSourceProvider(["Alpha"], "route-mixed"), artifactStore: mixedState.artifacts, packetStore: mixedState.packets, ledger: mixedState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
+const mixedPacket = mixedResult.packets[0].packet, mixedNumerical = mixedPacket.findings.filter(({ topic }) => topic === "numerical_limits");
+assert.equal(mixedResult.status, "completed"); assert.equal(mixedNumerical.length, 2); assert.ok(mixedNumerical.every(({ acquisition_ids }) => acquisition_ids.length === 1)); assert.equal(mixedPacket.conflicts[0].finding_ids.length, 2); mixedState.ledger.close();
+
 const second = await run("second", ["Alpha"], "different-free-route", shared), secondAlpha = second.result.packets[0];
 assert.equal(secondAlpha.packet.packet_id, alpha.packet_id); assert.equal(secondAlpha.storage_status, "reused");
 const third = await run("third", ["Beta", "Alpha"], "third-free-route", shared);
@@ -156,7 +177,7 @@ assert.match(summarizeLibrarianCandidate({ product: { source_name: "Alpha", desc
 const invalid = structuredClone(beta); invalid.research_outcomes[0] = { topic: "benefit", status: "answered", finding_ids: [], conflict_ids: [], unresolved_questions: [] }; invalid.packet_id = packetId(invalid);
 assert.throws(() => first.validator(invalid), /answered outcome is unsupported/);
 const collectionOnlyAnswer = structuredClone(alpha), collectionAcquisition = collectionOnlyAnswer.acquisitions.find(({ role }) => role === "collection_listing"), collectionExcerpt = collectionOnlyAnswer.excerpts.find(({ role, artifact_id }) => role === "research_evidence" && artifact_id === collectionAcquisition.raw_artifact_id), benefitFinding = collectionOnlyAnswer.findings.find(({ topic }) => topic === "benefit"), oldFindingId = benefitFinding.finding_id;
-benefitFinding.statement = collectionExcerpt.text; benefitFinding.statement_excerpt_id = collectionExcerpt.excerpt_id; benefitFinding.evidence_excerpt_ids = [...new Set([...benefitFinding.evidence_excerpt_ids, collectionExcerpt.excerpt_id])].sort(); benefitFinding.acquisition_ids = [...new Set([...benefitFinding.acquisition_ids, collectionAcquisition.acquisition_id])].sort(); benefitFinding.finding_id = findingIdV02(benefitFinding);
+benefitFinding.statement = collectionExcerpt.text; benefitFinding.statement_excerpt_id = collectionExcerpt.excerpt_id; benefitFinding.evidence_excerpt_ids = [collectionExcerpt.excerpt_id]; benefitFinding.acquisition_ids = [collectionAcquisition.acquisition_id]; benefitFinding.parsed_values = []; benefitFinding.finding_id = findingIdV02(benefitFinding);
 collectionOnlyAnswer.research_outcomes.find(({ topic }) => topic === "benefit").finding_ids = [benefitFinding.finding_id]; assert.notEqual(oldFindingId, benefitFinding.finding_id); collectionOnlyAnswer.packet_id = packetId(collectionOnlyAnswer);
 assert.throws(() => first.validator(collectionOnlyAnswer), /answered outcome lacks a linked first-party statement/);
 

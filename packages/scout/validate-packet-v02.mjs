@@ -9,6 +9,11 @@ const schema = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../
 const ajv = new Ajv2020({ allErrors: true, strict: true }); const validateSchema = ajv.compile(schema);
 const normalize = (text) => String(text).replace(/\s+/g, " ").trim();
 function fail(message) { throw new Error(`invalid ScoutPacket v0.2: ${message}`); }
+function sourceRelationshipKey(acquisition) {
+  if (acquisition.role === "collection_listing") return `collection:${acquisition.acquisition_id}`;
+  try { return `${acquisition.authority.level}:${new URL(acquisition.final_locator).origin}`; }
+  catch { return `${acquisition.authority.level}:${acquisition.final_locator}`; }
+}
 
 export function createPacketValidatorV02(artifactStore) {
   return function validatePacketV02(packet) {
@@ -95,6 +100,10 @@ export function createPacketValidatorV02(artifactStore) {
       if (!statementExcerpt || !finding.evidence_excerpt_ids.includes(finding.statement_excerpt_id) || normalize(statementExcerpt.text) !== normalize(finding.statement)) fail("finding statement must equal its selected source excerpt");
       const expectedAcquisitions = new Set(evidence.flatMap(({ artifact_id }) => [...(artifactOwners.get(artifact_id) ?? [])]));
       if (!finding.acquisition_ids.every((id) => expectedAcquisitions.has(id)) || !finding.acquisition_ids.length) fail("finding acquisition lineage is invalid");
+      if (new Set(finding.acquisition_ids.map((id) => sourceRelationshipKey(acquisitions.get(id)))).size !== 1) fail("finding must preserve one source relationship");
+      if (evidence.some(({ artifact_id }) => !finding.acquisition_ids.some((id) => {
+        const acquisition = acquisitions.get(id); return [acquisition.raw_artifact_id, acquisition.readable_artifact_id].includes(artifact_id);
+      }))) fail("finding evidence crosses its source relationship");
       const joined = normalize(evidence.map(({ text }) => text).join(" "));
       for (const primitive of finding.parsed_values) if (!joined.includes(normalize(primitive.source_text))) fail("parsed primitive is not traceable to cited evidence");
       findings.set(finding.finding_id, finding);

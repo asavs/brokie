@@ -24,6 +24,12 @@ function hasQuantifiedClaim(text) {
   return /(?:^|\D)\d+(?:[.,]\d+)?(?:\s|$|[%$€£])/u.test(text);
 }
 
+function sourceRelationshipKey(acquisition) {
+  if (acquisition.role === "collection_listing") return `collection:${acquisition.acquisition_id}`;
+  try { return `${acquisition.authority.level}:${new URL(acquisition.final_locator).origin}`; }
+  catch { return `${acquisition.authority.level}:${acquisition.final_locator}`; }
+}
+
 function coded(code, detail = "") { const error = new Error(code); error.code = code; error.detail = detail; return error; }
 function exactKeys(value, keys) { return value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).sort().join("|") === [...keys].sort().join("|"); }
 function cleanLine(value, maximum = 1000) { return typeof value === "string" && value.trim() && value.length <= maximum && !/[\r\n]|```|(?:api[_-]?key|authorization|bearer|password|token)\s*=/i.test(value); }
@@ -301,22 +307,34 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
         context.allowed_actions = ["record_research"];
       } else if (action.type === "record_research") {
         const subject = subjects[action.listing_index]; if (!subject || subject.researched || subject !== subjects.find((item) => !item.researched)) throw coded("invalid_agent_action");
-        const excerpts = new Map([[subject.listingExcerpt.excerpt_id, subject.listingExcerpt]]), findingRecords = [];
+        const excerpts = new Map([[subject.listingExcerpt.excerpt_id, subject.listingExcerpt]]), findingRecords = [], proposedFindingIds = [];
         const excerptFor = (segmentId) => {
           const segment = subject.availableSegments.get(segmentId); if (!segment || segment.end_byte - segment.start_byte > MAX_EVIDENCE_BYTES) throw coded("invalid_agent_action");
           const source = artifactStore.read(segment.artifact_id).bytes;
           const excerpt = makeExcerptV02(segment.artifact_id, segment.start_byte, segment.end_byte, source, "research_evidence"); excerpts.set(excerpt.excerpt_id, excerpt); return { excerpt, segment };
         };
+        const acquisitionFor = (id) => id === subject.listing.acquisition_id ? subject.listing : subject.pages.find(({ page }) => page.acquisition_id === id)?.page;
         for (const proposed of action.findings) {
           const statement = excerptFor(proposed.statement_segment_id); const evidence = [...new Set([proposed.statement_segment_id, ...proposed.evidence_segment_ids])].map(excerptFor);
           const normalizedEvidence = evidence.map(({ excerpt }) => excerpt.text).join(" ").replace(/\s+/g, " ").trim();
           if (proposed.parsed_values.some(({ source_text }) => !normalizedEvidence.includes(source_text.replace(/\s+/g, " ").trim()))) throw coded("invalid_agent_action");
-          const acquisitionIds = [...new Set(evidence.map(({ segment }) => segment.acquisition_id))].sort();
-          const finding = { finding_id: "", topic: proposed.topic, statement: statement.excerpt.text, statement_excerpt_id: statement.excerpt.excerpt_id, derivation: proposed.derivation, evidence_excerpt_ids: [...new Set(evidence.map(({ excerpt }) => excerpt.excerpt_id))].sort(), acquisition_ids: acquisitionIds, parsed_values: proposed.parsed_values };
-          finding.finding_id = findingIdV02(finding); findingRecords.push(finding);
+          const groups = new Map();
+          for (const item of evidence) {
+            const sourceKey = sourceRelationshipKey(acquisitionFor(item.segment.acquisition_id));
+            const group = groups.get(sourceKey) ?? []; group.push(item); groups.set(sourceKey, group);
+          }
+          const ids = [];
+          for (const group of [...groups.values()]) {
+            const groupStatement = group.find(({ segment }) => segment.segment_id === proposed.statement_segment_id) ?? group[0];
+            const groupText = group.map(({ excerpt }) => excerpt.text).join(" ").replace(/\s+/g, " ").trim();
+            const acquisitionIds = [...new Set(group.map(({ segment }) => segment.acquisition_id))].sort();
+            const finding = { finding_id: "", topic: proposed.topic, statement: groupStatement.excerpt.text, statement_excerpt_id: groupStatement.excerpt.excerpt_id, derivation: proposed.derivation, evidence_excerpt_ids: [...new Set(group.map(({ excerpt }) => excerpt.excerpt_id))].sort(), acquisition_ids: acquisitionIds, parsed_values: proposed.parsed_values.filter(({ source_text }) => groupText.includes(source_text.replace(/\s+/g, " ").trim())) };
+            finding.finding_id = findingIdV02(finding); findingRecords.push(finding); ids.push(finding.finding_id);
+          }
+          proposedFindingIds.push(ids);
         }
         const conflicts = action.conflicts.map((proposed) => {
-          const findingIds = [...new Set(proposed.finding_indexes.map((index) => findingRecords[index]?.finding_id))]; if (findingIds.some((id) => !id)) throw coded("invalid_agent_action");
+          const findingIds = [...new Set(proposed.finding_indexes.flatMap((index) => proposedFindingIds[index] ?? []))]; if (findingIds.length < 2) throw coded("invalid_agent_action", "A conflict must resolve to at least two source-local findings.");
           const conflict = { conflict_id: "", topic: proposed.topic, finding_ids: findingIds.sort(), observation: proposed.observation }; conflict.conflict_id = conflictIdV02(conflict); return conflict;
         });
         if (action.outcomes.length !== research_request.topics.length) throw coded("invalid_agent_action");
@@ -324,11 +342,10 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
         const normalizations = [];
         const outcomes = research_request.topics.map(({ topic }) => {
           const proposed = byTopic.get(topic); if (!proposed) throw coded("invalid_agent_action");
-          const findingIds = proposed.finding_indexes.map((index) => findingRecords[index]?.finding_id), conflictIds = proposed.conflict_indexes.map((index) => conflicts[index]?.conflict_id);
+          const findingIds = proposed.finding_indexes.flatMap((index) => proposedFindingIds[index] ?? []), conflictIds = proposed.conflict_indexes.map((index) => conflicts[index]?.conflict_id);
           if (findingIds.some((id) => !id) || conflictIds.some((id) => !id)) throw coded("invalid_agent_action");
           return { topic, status: proposed.status, finding_ids: [...new Set(findingIds)].sort(), conflict_ids: [...new Set(conflictIds)].sort(), unresolved_questions: [...new Set(proposed.unresolved_questions)].sort() };
         });
-        const acquisitionFor = (id) => id === subject.listing.acquisition_id ? subject.listing : subject.pages.find(({ page }) => page.acquisition_id === id)?.page;
         const numericalFindings = findingRecords.filter(({ topic }) => topic === "numerical_limits");
         const hasLinkedNumericalFinding = numericalFindings.some(({ acquisition_ids }) => acquisition_ids.some((id) => acquisitionFor(id)?.authority.level === "linked_first_party"));
         const hasCollectionNumericalFinding = numericalFindings.some(({ acquisition_ids }) => acquisition_ids.includes(subject.listing.acquisition_id));
