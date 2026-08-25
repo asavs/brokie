@@ -122,10 +122,12 @@ class MixedSourceProvider extends ResearchProvider {
     if (action.type === "record_research" && action.findings.some(({ statement_segment_id }) => statement_segment_id.endsWith(":listing"))) {
       const collection = action.findings[1], linked = action.findings[2];
       action.findings.splice(1, 2, { ...linked, evidence_segment_ids: [...new Set([...collection.evidence_segment_ids, ...linked.evidence_segment_ids])], parsed_values: [...collection.parsed_values, ...linked.parsed_values] });
-      action.conflicts = [{ ...action.conflicts[0], finding_indexes: [1, 1] }];
+      action.conflicts = [{ ...action.conflicts[0], finding_indexes: [1, 4] }];
       action.outcomes = action.outcomes.map((outcome) => {
-        if (outcome.topic === "numerical_limits") return { ...outcome, finding_indexes: [1] };
-        return { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 2 ? index - 1 : index) };
+        if (outcome.topic === "numerical_limits") return { ...outcome, finding_indexes: [1, 4] };
+        const adjusted = { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 2 ? index - 1 : index) };
+        if (outcome.topic === "material_caveats") return { ...adjusted, status: "partially_answered", conflict_indexes: [0], unresolved_questions: ["The caveat remains source-local and unresolved."] };
+        return adjusted;
       });
       return { ...reply, content: JSON.stringify(action) };
     }
@@ -157,8 +159,9 @@ assert.equal(isolatedResult.status, "completed"); assert.equal(isolatedResult.pa
 assert.equal(isolatedState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_events WHERE run_id=? AND event_type='research_blocked'").get(isolatedResult.run_id).count, 1); isolatedState.ledger.close();
 
 const comparisonState = state("comparison-recovery"), comparisonResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new MissingComparisonProvider(["Alpha"], "route-comparison"), artifactStore: comparisonState.artifacts, packetStore: comparisonState.packets, ledger: comparisonState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
-assert.equal(comparisonResult.status, "completed"); assert.equal(comparisonResult.packets[0].packet.conflicts.length, 1);
-assert.equal(comparisonState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action'").get(comparisonResult.run_id).count, 1); comparisonState.ledger.close();
+const comparisonPacket = comparisonResult.packets[0].packet, comparisonNumerical = comparisonPacket.findings.filter(({ topic }) => topic === "numerical_limits");
+assert.equal(comparisonResult.status, "completed"); assert.equal(comparisonPacket.conflicts.length, 0); assert.equal(comparisonNumerical.length, 2);
+assert.equal(comparisonPacket.research_outcomes.find(({ topic }) => topic === "numerical_limits").status, "partially_answered"); assert.equal(comparisonState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action'").get(comparisonResult.run_id).count, 0); comparisonState.ledger.close();
 
 const mixedState = state("mixed-source-recovery"), mixedResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new MixedSourceProvider(["Alpha"], "route-mixed"), artifactStore: mixedState.artifacts, packetStore: mixedState.packets, ledger: mixedState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
 const mixedPacket = mixedResult.packets[0].packet, mixedNumerical = mixedPacket.findings.filter(({ topic }) => topic === "numerical_limits");

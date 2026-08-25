@@ -333,8 +333,22 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
           }
           proposedFindingIds.push(ids);
         }
-        const conflicts = action.conflicts.map((proposed) => {
-          const findingIds = [...new Set(proposed.finding_indexes.flatMap((index) => proposedFindingIds[index] ?? []))]; if (findingIds.length < 2) throw coded("invalid_agent_action", "A conflict must resolve to at least two source-local findings.");
+        let preservedCollectionFindingId = null;
+        const numericalFindings = findingRecords.filter(({ topic }) => topic === "numerical_limits");
+        const hasLinkedNumericalFinding = numericalFindings.some(({ acquisition_ids }) => acquisition_ids.some((id) => acquisitionFor(id)?.authority.level === "linked_first_party"));
+        const hasCollectionNumericalFinding = numericalFindings.some(({ acquisition_ids }) => acquisition_ids.includes(subject.listing.acquisition_id));
+        if (hasQuantifiedClaim(subject.listingExcerpt.text) && hasLinkedNumericalFinding && !hasCollectionNumericalFinding) {
+          const listingEvidence = excerptFor(`${subject.listing.acquisition_id}:listing`);
+          const finding = { finding_id: "", topic: "numerical_limits", statement: listingEvidence.excerpt.text, statement_excerpt_id: listingEvidence.excerpt.excerpt_id, derivation: "explicit", evidence_excerpt_ids: [listingEvidence.excerpt.excerpt_id], acquisition_ids: [subject.listing.acquisition_id], parsed_values: [] };
+          finding.finding_id = findingIdV02(finding); findingRecords.push(finding); preservedCollectionFindingId = finding.finding_id;
+        }
+        const findingForId = (id) => findingRecords.find((item) => item.finding_id === id);
+        const referenceNormalizations = [];
+        const conflicts = action.conflicts.map((proposed, conflictIndex) => {
+          if (proposed.finding_indexes.some((index) => !proposedFindingIds[index])) throw coded("invalid_agent_action");
+          const expanded = [...new Set(proposed.finding_indexes.flatMap((index) => proposedFindingIds[index]))], findingIds = expanded.filter((id) => findingForId(id)?.topic === proposed.topic);
+          if (findingIds.length !== expanded.length) referenceNormalizations.push({ kind: "conflict_finding_topic_scope", conflict_index: conflictIndex, topic: proposed.topic, removed_count: expanded.length - findingIds.length });
+          if (findingIds.length < 2) throw coded("invalid_agent_action", "A conflict must resolve to at least two source-local findings on its topic.");
           const conflict = { conflict_id: "", topic: proposed.topic, finding_ids: findingIds.sort(), observation: proposed.observation }; conflict.conflict_id = conflictIdV02(conflict); return conflict;
         });
         if (action.outcomes.length !== research_request.topics.length) throw coded("invalid_agent_action");
@@ -342,16 +356,20 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
         const normalizations = [];
         const outcomes = research_request.topics.map(({ topic }) => {
           const proposed = byTopic.get(topic); if (!proposed) throw coded("invalid_agent_action");
-          const findingIds = proposed.finding_indexes.flatMap((index) => proposedFindingIds[index] ?? []), conflictIds = proposed.conflict_indexes.map((index) => conflicts[index]?.conflict_id);
-          if (findingIds.some((id) => !id) || conflictIds.some((id) => !id)) throw coded("invalid_agent_action");
-          return { topic, status: proposed.status, finding_ids: [...new Set(findingIds)].sort(), conflict_ids: [...new Set(conflictIds)].sort(), unresolved_questions: [...new Set(proposed.unresolved_questions)].sort() };
+          if (proposed.finding_indexes.some((index) => !proposedFindingIds[index]) || proposed.conflict_indexes.some((index) => !conflicts[index])) throw coded("invalid_agent_action");
+          const expandedFindings = [...new Set(proposed.finding_indexes.flatMap((index) => proposedFindingIds[index]))], findingIds = expandedFindings.filter((id) => findingForId(id)?.topic === topic);
+          const expandedConflicts = proposed.conflict_indexes.map((index) => conflicts[index]), topicConflicts = expandedConflicts.filter((conflict) => conflict.topic === topic);
+          if (findingIds.length !== expandedFindings.length) referenceNormalizations.push({ kind: "outcome_finding_topic_scope", topic, removed_count: expandedFindings.length - findingIds.length });
+          if (topicConflicts.length !== expandedConflicts.length) referenceNormalizations.push({ kind: "outcome_conflict_topic_scope", topic, removed_count: expandedConflicts.length - topicConflicts.length });
+          if (topic === "numerical_limits" && preservedCollectionFindingId) findingIds.push(preservedCollectionFindingId);
+          const unresolved = [...new Set(proposed.unresolved_questions)];
+          let status = proposed.status;
+          if (topic === "numerical_limits" && preservedCollectionFindingId && topicConflicts.length === 0) {
+            unresolved.push("The quantified collection claim was preserved mechanically but was not explicitly reconciled with current linked evidence.");
+            if (status === "answered") { normalizations.push({ topic, from: "answered", to: "partially_answered", reason: "collection_claim_not_reconciled" }); status = "partially_answered"; }
+          }
+          return { topic, status, finding_ids: [...new Set(findingIds)].sort(), conflict_ids: [...new Set(topicConflicts.map(({ conflict_id }) => conflict_id))].sort(), unresolved_questions: [...new Set(unresolved)].sort() };
         });
-        const numericalFindings = findingRecords.filter(({ topic }) => topic === "numerical_limits");
-        const hasLinkedNumericalFinding = numericalFindings.some(({ acquisition_ids }) => acquisition_ids.some((id) => acquisitionFor(id)?.authority.level === "linked_first_party"));
-        const hasCollectionNumericalFinding = numericalFindings.some(({ acquisition_ids }) => acquisition_ids.includes(subject.listing.acquisition_id));
-        if (hasQuantifiedClaim(subject.listingExcerpt.text) && hasLinkedNumericalFinding && !hasCollectionNumericalFinding) {
-          throw coded("invalid_agent_action", "The collection listing quantifies the offer. Preserve its numerical_limits statement separately before comparing it with linked first-party evidence.");
-        }
         for (const outcome of outcomes) {
           if (outcome.status !== "answered") continue;
           const hasFirstPartyStatement = outcome.finding_ids.some((id) => {
@@ -363,6 +381,7 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
           else if (!hasFirstPartyStatement) { outcome.status = "partially_answered"; outcome.unresolved_questions = ["No linked first-party statement was selected for this topic."]; normalizations.push({ topic: outcome.topic, from: "answered", to: "partially_answered", reason: "first_party_statement_missing" }); }
         }
         if (normalizations.length) ledger.event(runId, "research_outcomes_normalized", { listing_index: subject.index, normalizations });
+        if (preservedCollectionFindingId || referenceNormalizations.length) ledger.event(runId, "research_references_normalized", { listing_index: subject.index, preserved_collection_finding_id: preservedCollectionFindingId, normalizations: referenceNormalizations });
         for (const finding of findingRecords) if (!outcomes.some(({ topic, finding_ids }) => topic === finding.topic && finding_ids.includes(finding.finding_id))) throw coded("invalid_agent_action");
         for (const conflict of conflicts) if (!outcomes.some(({ topic, conflict_ids }) => topic === conflict.topic && conflict_ids.includes(conflict.conflict_id))) throw coded("invalid_agent_action");
         for (const outcome of outcomes) {
