@@ -32,7 +32,9 @@ function sourceRelationshipKey(acquisition) {
 
 function explicitlyDescribesAgreement(observation) {
   const text = String(observation).toLowerCase();
-  return /\bsame limits?\b/.test(text) && !/\b(?:not|isn't|aren't|wasn't|weren't)\s+(?:the\s+)?same limits?\b/.test(text);
+  const agreement = /\bsame limits?\b|\bconsistent\b|\bequivalent\b/.test(text);
+  const negated = /\b(?:not|isn't|aren't|wasn't|weren't)\s+(?:the\s+)?same limits?\b|\bnot\s+(?:consistent|equivalent)\b/.test(text);
+  return agreement && !negated;
 }
 
 function coded(code, detail = "") { const error = new Error(code); error.code = code; error.detail = detail; return error; }
