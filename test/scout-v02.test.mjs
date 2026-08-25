@@ -8,7 +8,7 @@ import { createPacketValidatorV02 } from "../packages/scout/validate-packet-v02.
 import { extractActionV02, normalizeActionV02, runScoutV02, validateActionV02 } from "../packages/scout/runner-v02.mjs";
 import { packetToLibrarianBundle } from "../packages/scout/adapter-v02.mjs";
 import { packetId } from "../packages/scout/canonical.mjs";
-import { findingIdV02 } from "../packages/scout/identity-v02.mjs";
+import { conflictIdV02, findingIdV02 } from "../packages/scout/identity-v02.mjs";
 import { generateDogfoodReportV02 } from "../packages/scout/report-v02.mjs";
 import { summarizeLibrarianCandidate } from "../packages/scout/librarian-eval-v02-core.mjs";
 import { createReadableArtifact } from "../packages/scout/readable-v02.mjs";
@@ -201,6 +201,8 @@ assert.match(summarizeLibrarianCandidate({ product: { source_name: "Alpha", desc
 
 const invalid = structuredClone(beta); invalid.research_outcomes[0] = { topic: "benefit", status: "answered", finding_ids: [], conflict_ids: [], unresolved_questions: [] }; invalid.packet_id = packetId(invalid);
 assert.throws(() => first.validator(invalid), /answered outcome is unsupported/);
+const agreeingConflict = structuredClone(alpha), oldConflictId = agreeingConflict.conflicts[0].conflict_id; agreeingConflict.conflicts[0].observation = "The two sources state the same limits with different capitalization."; agreeingConflict.conflicts[0].conflict_id = conflictIdV02(agreeingConflict.conflicts[0]); agreeingConflict.research_outcomes.find(({ topic }) => topic === "numerical_limits").conflict_ids = [agreeingConflict.conflicts[0].conflict_id]; assert.notEqual(oldConflictId, agreeingConflict.conflicts[0].conflict_id); agreeingConflict.packet_id = packetId(agreeingConflict);
+assert.throws(() => first.validator(agreeingConflict), /explicitly describes agreement/);
 const collectionOnlyAnswer = structuredClone(alpha), collectionAcquisition = collectionOnlyAnswer.acquisitions.find(({ role }) => role === "collection_listing"), collectionExcerpt = collectionOnlyAnswer.excerpts.find(({ role, artifact_id }) => role === "research_evidence" && artifact_id === collectionAcquisition.raw_artifact_id), benefitFinding = collectionOnlyAnswer.findings.find(({ topic }) => topic === "benefit"), oldFindingId = benefitFinding.finding_id;
 benefitFinding.statement = collectionExcerpt.text; benefitFinding.statement_excerpt_id = collectionExcerpt.excerpt_id; benefitFinding.evidence_excerpt_ids = [collectionExcerpt.excerpt_id]; benefitFinding.acquisition_ids = [collectionAcquisition.acquisition_id]; benefitFinding.parsed_values = []; benefitFinding.finding_id = findingIdV02(benefitFinding);
 collectionOnlyAnswer.research_outcomes.find(({ topic }) => topic === "benefit").finding_ids = [benefitFinding.finding_id]; assert.notEqual(oldFindingId, benefitFinding.finding_id); collectionOnlyAnswer.packet_id = packetId(collectionOnlyAnswer);

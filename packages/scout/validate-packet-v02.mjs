@@ -112,6 +112,7 @@ export function createPacketValidatorV02(artifactStore) {
     const conflicts = new Map();
     for (const conflict of packet.conflicts) {
       if (conflict.conflict_id !== conflictIdV02(conflict) || conflicts.has(conflict.conflict_id)) fail("conflict identity is invalid");
+      if (/\bsame limits?\b/i.test(conflict.observation) && !/\b(?:not|isn't|aren't|wasn't|weren't)\s+(?:the\s+)?same limits?\b/i.test(conflict.observation)) fail("conflict observation explicitly describes agreement");
       const linked = conflict.finding_ids.map((id) => findings.get(id));
       if (linked.some((item) => !item || item.topic !== conflict.topic)) fail("conflict findings are invalid");
       conflicts.set(conflict.conflict_id, conflict);
