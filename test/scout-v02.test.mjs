@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { ArtifactStore, PacketStore } from "../packages/scout/store.mjs";
 import { ScoutLedger } from "../packages/scout/ledger.mjs";
 import { createPacketValidatorV02 } from "../packages/scout/validate-packet-v02.mjs";
-import { extractActionV02, runScoutV02 } from "../packages/scout/runner-v02.mjs";
+import { extractActionV02, normalizeActionV02, runScoutV02, validateActionV02 } from "../packages/scout/runner-v02.mjs";
 import { packetToLibrarianBundle } from "../packages/scout/adapter-v02.mjs";
 import { packetId } from "../packages/scout/canonical.mjs";
 import { findingIdV02 } from "../packages/scout/identity-v02.mjs";
@@ -42,6 +42,8 @@ async function transport(url) {
 }
 const lookup = async () => [{ address: "203.0.113.20", family: 4 }];
 const primitive = (kind, sourceText, values = {}) => ({ kind, source_text: sourceText, value: null, unit_text: null, currency: null, cadence: null, date_text: null, boolean_value: null, audience_text: null, ...values });
+const misplacedBoolean = { type: "record_research", listing_index: 0, findings: [{ topic: "requirements", derivation: "explicit", statement_segment_id: "segment", evidence_segment_ids: ["segment"], parsed_values: [primitive("boolean_requirement", "No card required", { value: false, boolean_value: false })] }], conflicts: [], outcomes: [] };
+const normalizedBoolean = normalizeActionV02(misplacedBoolean); assert.equal(normalizedBoolean.action.findings[0].parsed_values[0].value, null); assert.equal(normalizedBoolean.action.findings[0].parsed_values[0].boolean_value, false); assert.equal(normalizedBoolean.repairs.length, 1); validateActionV02(normalizedBoolean.action);
 
 class ResearchProvider {
   constructor(order, model) { this.order = order; this.provider = "scripted"; this.model = model; this.calls = 0; }

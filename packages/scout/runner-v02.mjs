@@ -67,6 +67,20 @@ export function validateActionV02(action) {
   return action;
 }
 
+export function normalizeActionV02(action) {
+  const normalized = structuredClone(action), repairs = [];
+  if (normalized?.type !== "record_research" || !Array.isArray(normalized.findings)) return { action: normalized, repairs };
+  normalized.findings.forEach((finding, findingIndex) => {
+    if (!Array.isArray(finding?.parsed_values)) return;
+    finding.parsed_values.forEach((primitive, primitiveIndex) => {
+      if (primitive?.kind !== "boolean_requirement" || typeof primitive.value !== "boolean" || !(primitive.boolean_value === null || primitive.boolean_value === primitive.value)) return;
+      primitive.boolean_value = primitive.value; primitive.value = null;
+      repairs.push({ kind: "boolean_value_slot", finding_index: findingIndex, primitive_index: primitiveIndex });
+    });
+  });
+  return { action: normalized, repairs };
+}
+
 export function extractActionV02(content) {
   const trimmed = String(content ?? "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   try { return JSON.parse(trimmed); } catch {
@@ -241,8 +255,10 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
       finally { clearTimeout(timer); }
       if (response.resolved_model && !resolvedModels.includes(response.resolved_model)) resolvedModels.push(response.resolved_model);
       restrictedTracePath = writeRestrictedTrace(restricted_trace_root, runId, attemptNumber, response);
-      try { action = validateActionV02(extractActionV02(response.content)); } catch { throw coded("invalid_agent_action"); }
+      let actionRepairs = [];
+      try { const normalized = normalizeActionV02(extractActionV02(response.content)); action = validateActionV02(normalized.action); actionRepairs = normalized.repairs; } catch { throw coded("invalid_agent_action"); }
       ledger.attempt(runId, { attempt_number: attemptNumber, started_at: startedAt, finished_at: new Date().toISOString(), status: "accepted", requested_model: provider.model, resolved_model: response.resolved_model, usage: response.usage, action, restricted_trace_path: restrictedTracePath });
+      if (actionRepairs.length) ledger.event(runId, "model_action_normalized", { attempt_number: attemptNumber, repairs: actionRepairs });
       ledger.event(runId, "agent_action", action);
     } catch (error) {
       const code = error instanceof BudgetError || (typeof error?.code === "string" && FAILURE_CODES.has(error.code)) ? error.code : "provider_error";
