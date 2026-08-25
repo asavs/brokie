@@ -37,9 +37,10 @@ const catalogText = `# Resource Ledger
 fs.writeFileSync(path.join(repo, "OVERVIEW.md"), "# Overview\n\nA small repository with several documents.\n");
 fs.writeFileSync(path.join(repo, "RESOURCES.md"), catalogText);
 fs.writeFileSync(path.join(repo, "NOTES.md"), "# Notes\n\n- release notes\n- contributor notes\n");
+fs.writeFileSync(path.join(repo, "LARGE.md"), `# Large generic catalog\n\n${Array.from({ length: 250 }, (_, index) => `- [Resource ${String(index).padStart(3, "0")}](https://resource-${index}.example/info) — generic listing.`).join("\n")}\n`);
 execFileSync("git", ["init", "-q"], { cwd: repo }); execFileSync("git", ["add", "."], { cwd: repo });
 execFileSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "commit", "-q", "-m", "fixture"], { cwd: repo, env: { ...process.env, GIT_AUTHOR_DATE: "2026-08-24T00:00:00Z", GIT_COMMITTER_DATE: "2026-08-24T00:00:00Z" } });
-const fixtureRepository = { root: repo, revision: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim(), commit_time: "2026-08-24T00:00:00Z", remote: "", tracked: ["NOTES.md", "OVERVIEW.md", "RESOURCES.md"] };
+const fixtureRepository = { root: repo, revision: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim(), commit_time: "2026-08-24T00:00:00Z", remote: "", tracked: ["LARGE.md", "NOTES.md", "OVERVIEW.md", "RESOURCES.md"] };
 
 const response = (status, body, headers = {}) => new Response(body, { status, headers });
 const calls = [];
@@ -60,7 +61,7 @@ async function transport(url) {
 }
 const lookup = async () => [{ address: "203.0.113.7", family: 4 }];
 const actions = [
-  { type: "inspect_git" }, { type: "list_files", cursor: 0 }, { type: "read_markdown", path: "RESOURCES.md" },
+  { type: "list_files", cursor: 0 }, { type: "read_markdown", path: "RESOURCES.md" },
   (context) => {
     const markdown = context.observations.findLast((item) => item.type === "markdown");
     return { type: "select_listings", listings: markdown.listing_candidates.slice(0, 5).map((item, index) => ({ artifact_id: markdown.artifact_id, start_byte: item.start_byte, end_byte: item.end_byte, source_label: item.source_label, selection_reason: `structural sample ${index + 1}`, primary_link_index: 0 })) };
@@ -219,6 +220,19 @@ assert.equal(webRun.packets.length, 1); assert.equal(webRun.packets[0].packet.li
 assert.deepEqual(webRun.packets[0].packet.provenance.source_timestamps, []);
 assert.deepEqual(webRun.packets[0].packet.provenance.tools_used.map((tool) => tool.name), ["http.fetch", "markdown.inspect", "link.inspect"]); webLedger.close();
 
+const largeState = scoutState("large-context"), largeProvider = new ScriptedProvider([
+  { type: "list_files", cursor: 0 }, { type: "read_markdown", path: "LARGE.md" },
+  (context) => {
+    const markdown = context.observations.findLast((item) => item.type === "markdown");
+    assert.equal(markdown.listing_candidate_count, 250); assert.equal(markdown.listing_candidates.length, 40);
+    assert.equal(markdown.candidate_links.length, 40); assert.ok(markdown.candidate_links.flatMap((item) => item.links).length <= 160);
+    return { type: "select_listings", listings: markdown.listing_candidates.slice(0, 5).map((item) => ({ artifact_id: markdown.artifact_id, start_byte: item.start_byte, end_byte: item.end_byte, source_label: item.source_label, selection_reason: "bounded structural sample", primary_link_index: 0 })) };
+  },
+  { type: "finalize" },
+]);
+const largeRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: largeProvider, artifactStore: largeState.artifacts, packetStore: largeState.packets, ledger: largeState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
+assert.equal(largeRun.packets.length, 5); assert.ok(largeRun.packets.every(({ packet }) => packet.investigation.status === "blocked")); largeState.scoutLedger.close();
+
 assert.throws(() => validateAction({ type: "list_files", cursor: -1 }), /invalid_agent_action/);
 assert.throws(() => validateAction({ type: "skip_link", listing_index: 0, link_index: 0, reason_code: "invented" }), /invalid_agent_action/);
 assert.throws(() => validateAction({ type: "select_listings", listings: [{ artifact_id: `art_sha256_${"0".repeat(64)}`, start_byte: 0, end_byte: 1, source_label: "", selection_reason: "x", primary_link_index: 0 }] }), /invalid_agent_action/);
@@ -227,26 +241,26 @@ assert.throws(() => validateAction({ type: "select_listings", listings: [{ artif
 
 function scoutState(name) { const root = path.join(temp, name), artifacts = new ArtifactStore(root), scoutLedger = new ScoutLedger(path.join(root, "ledger.sqlite")); return { root, artifacts, scoutLedger, packets: new PacketStore(root, createPacketValidator(artifacts)) }; }
 const atomicState = scoutState("atomic-selection");
-const corruptSecondSelection = (context) => { const action = actions[3](context); action.listings[1].source_label = `${action.listings[1].source_label} corrupted`; return action; };
-const atomicProvider = new ScriptedProvider([...actions.slice(0, 3), corruptSecondSelection, actions[3], { type: "finalize" }]);
+const corruptSecondSelection = (context) => { const action = actions[2](context); action.listings[1].source_label = `${action.listings[1].source_label} corrupted`; return action; };
+const atomicProvider = new ScriptedProvider([...actions.slice(0, 2), corruptSecondSelection, actions[2], { type: "finalize" }]);
 const atomicRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: atomicProvider, artifactStore: atomicState.artifacts, packetStore: atomicState.packets, ledger: atomicState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
 assert.equal(atomicRun.status, "blocked"); assert.equal(atomicRun.packets.length, 5); assert.ok(atomicRun.packets.every(({ packet }) => packet.investigation.status === "blocked"));
 assert.equal(atomicState.scoutLedger.db.prepare("SELECT COUNT(*) count FROM scout_events WHERE run_id=? AND event_type='listings_selected'").get(atomicRun.run_id).count, 1);
-const atomicAttempt = atomicState.scoutLedger.db.prepare("SELECT status,failure_code FROM scout_attempts WHERE run_id=? AND attempt_number=4").get(atomicRun.run_id);
+const atomicAttempt = atomicState.scoutLedger.db.prepare("SELECT status,failure_code FROM scout_attempts WHERE run_id=? AND attempt_number=3").get(atomicRun.run_id);
 assert.deepEqual([atomicAttempt.status, atomicAttempt.failure_code], ["invalid_agent_action", "invalid_agent_action"]); atomicState.scoutLedger.close();
 
-const duplicateState = scoutState("duplicate-link-actions"), duplicateProvider = new ScriptedProvider([...actions.slice(0, 4),
+const duplicateState = scoutState("duplicate-link-actions"), duplicateProvider = new ScriptedProvider([...actions.slice(0, 3),
   { type: "investigate_link", listing_index: 0, link_index: 0 }, { type: "investigate_link", listing_index: 0, link_index: 0 },
   { type: "skip_link", listing_index: 0, link_index: 1, reason_code: "other" }, { type: "skip_link", listing_index: 0, link_index: 1, reason_code: "other" }, { type: "finalize" },
 ]);
 const duplicateRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: duplicateProvider, artifactStore: duplicateState.artifacts, packetStore: duplicateState.packets, ledger: duplicateState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
 assert.equal(duplicateRun.packets.length, 5); assert.equal(duplicateRun.packets[0].packet.followed_pages.length, 1); assert.equal(duplicateRun.packets[0].packet.skipped_links.length, 1);
-assert.deepEqual(duplicateState.scoutLedger.db.prepare("SELECT attempt_number,status,failure_code FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action' ORDER BY attempt_number").all(duplicateRun.run_id).map((row) => [row.attempt_number, row.status, row.failure_code]), [[6, "invalid_agent_action", "invalid_agent_action"], [8, "invalid_agent_action", "invalid_agent_action"]]); duplicateState.scoutLedger.close();
+assert.deepEqual(duplicateState.scoutLedger.db.prepare("SELECT attempt_number,status,failure_code FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action' ORDER BY attempt_number").all(duplicateRun.run_id).map((row) => [row.attempt_number, row.status, row.failure_code]), [[5, "invalid_agent_action", "invalid_agent_action"], [7, "invalid_agent_action", "invalid_agent_action"]]); duplicateState.scoutLedger.close();
 
-const failureState = scoutState("provider-failure"); const selectionProvider = new ScriptedProvider(actions.slice(0, 4)); let selectionCalls = 0;
-const failAfterSelection = { provider: "scripted", model: "scripted/free", async complete(messages, options) { selectionCalls += 1; if (selectionCalls <= 4) return selectionProvider.complete(messages, options); throw Object.assign(new Error("provider unavailable"), { code: "provider_error" }); } };
+const failureState = scoutState("provider-failure"); const selectionProvider = new ScriptedProvider(actions.slice(0, 3)); let selectionCalls = 0;
+const failAfterSelection = { provider: "scripted", model: "scripted/free", async complete(messages, options) { selectionCalls += 1; if (selectionCalls <= 3) return selectionProvider.complete(messages, options); throw Object.assign(new Error("provider unavailable"), { code: "provider_error" }); } };
 const preserved = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: failAfterSelection, artifactStore: failureState.artifacts, packetStore: failureState.packets, ledger: failureState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
-assert.equal(selectionCalls, 5); assert.equal(preserved.status, "blocked"); assert.equal(preserved.packets.length, 5); assert.ok(preserved.packets.every(({ packet }) => packet.investigation.status === "blocked" && packet.investigation.reason_codes.includes("provider_error"))); failureState.scoutLedger.close();
+assert.equal(selectionCalls, 4); assert.equal(preserved.status, "blocked"); assert.equal(preserved.packets.length, 5); assert.ok(preserved.packets.every(({ packet }) => packet.investigation.status === "blocked" && packet.investigation.reason_codes.includes("provider_error"))); failureState.scoutLedger.close();
 
 const invalidState = scoutState("invalid-actions"), invalidProvider = new ScriptedProvider([{ type: "list_files", cursor: -1 }, { type: "skip_link", listing_index: -1, link_index: 0, reason_code: "other" }]);
 const invalidRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: invalidProvider, artifactStore: invalidState.artifacts, packetStore: invalidState.packets, ledger: invalidState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
