@@ -12,6 +12,7 @@ import { conflictIdV02, findingIdV02 } from "../packages/scout/identity-v02.mjs"
 import { generateDogfoodReportV02 } from "../packages/scout/report-v02.mjs";
 import { summarizeLibrarianCandidate } from "../packages/scout/librarian-eval-v02-core.mjs";
 import { createReadableArtifact } from "../packages/scout/readable-v02.mjs";
+import { deriveTruthfulPacketV02 } from "../packages/scout/derive-packet-v02.mjs";
 
 delete process.env.OPENROUTER_API_KEY; delete process.env.NVIDIA_NIM_API_KEY;
 assert.deepEqual(extractActionV02("```json\n{\"type\":\"finalize\"}\n```"), { type: "finalize" });
@@ -203,6 +204,7 @@ const invalid = structuredClone(beta); invalid.research_outcomes[0] = { topic: "
 assert.throws(() => first.validator(invalid), /answered outcome is unsupported/);
 const agreeingConflict = structuredClone(alpha), oldConflictId = agreeingConflict.conflicts[0].conflict_id; agreeingConflict.conflicts[0].observation = "The two source statements are consistent but use different capitalization."; agreeingConflict.conflicts[0].conflict_id = conflictIdV02(agreeingConflict.conflicts[0]); agreeingConflict.research_outcomes.find(({ topic }) => topic === "numerical_limits").conflict_ids = [agreeingConflict.conflicts[0].conflict_id]; assert.notEqual(oldConflictId, agreeingConflict.conflicts[0].conflict_id); agreeingConflict.packet_id = packetId(agreeingConflict);
 assert.throws(() => first.validator(agreeingConflict), /explicitly describes agreement/);
+const derivedAgreement = deriveTruthfulPacketV02(agreeingConflict); assert.equal(derivedAgreement.packet.conflicts.length, 0); assert.equal(derivedAgreement.packet.research_outcomes.find(({ topic }) => topic === "numerical_limits").status, "partially_answered"); assert.equal(derivedAgreement.repairs.length, 2); first.validator(derivedAgreement.packet);
 const collectionOnlyAnswer = structuredClone(alpha), collectionAcquisition = collectionOnlyAnswer.acquisitions.find(({ role }) => role === "collection_listing"), collectionExcerpt = collectionOnlyAnswer.excerpts.find(({ role, artifact_id }) => role === "research_evidence" && artifact_id === collectionAcquisition.raw_artifact_id), benefitFinding = collectionOnlyAnswer.findings.find(({ topic }) => topic === "benefit"), oldFindingId = benefitFinding.finding_id;
 benefitFinding.statement = collectionExcerpt.text; benefitFinding.statement_excerpt_id = collectionExcerpt.excerpt_id; benefitFinding.evidence_excerpt_ids = [collectionExcerpt.excerpt_id]; benefitFinding.acquisition_ids = [collectionAcquisition.acquisition_id]; benefitFinding.parsed_values = []; benefitFinding.finding_id = findingIdV02(benefitFinding);
 collectionOnlyAnswer.research_outcomes.find(({ topic }) => topic === "benefit").finding_ids = [benefitFinding.finding_id]; assert.notEqual(oldFindingId, benefitFinding.finding_id); collectionOnlyAnswer.packet_id = packetId(collectionOnlyAnswer);

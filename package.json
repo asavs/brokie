@@ -21,6 +21,7 @@
     "librarian:scout-v02": "node packages/scout/librarian-eval-v02.mjs",
     "scout:v01": "node packages/scout/cli.mjs",
     "scout:v02": "node packages/scout/cli-v02.mjs",
+    "scout:derive-v02": "node packages/scout/derive-packet-v02-cli.mjs",
     "review:v01": "node packages/maintainer/review-v0.1.mjs",
     "serve": "node apps/api/server.mjs",
     "refresh:fixture": "node packages/maintainer/job.mjs test/fixtures/free-for-dev.md test/fixtures/startup-offers.csv",

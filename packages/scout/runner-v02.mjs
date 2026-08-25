@@ -6,6 +6,7 @@ import { inspectListingBoundaries, inspectLinks, inspectMarkdown } from "./inspe
 import { acquisitionIdV02, conflictIdV02, findingIdV02, makeExcerptV02 } from "./identity-v02.mjs";
 import { boundedReadableSegments, boundedRelevantLinks, createReadableArtifact } from "./readable-v02.mjs";
 import { createResearchRequest } from "./research-v02.mjs";
+import { explicitlyDescribesAgreementV02 } from "./derive-packet-v02.mjs";
 import { createGitRevisionTools, inspectGitRevision } from "./revision-tools-v02.mjs";
 import { createHttpTool, sanitizeLocator } from "./tools.mjs";
 
@@ -28,13 +29,6 @@ function sourceRelationshipKey(acquisition) {
   if (acquisition.role === "collection_listing") return `collection:${acquisition.acquisition_id}`;
   try { return `${acquisition.authority.level}:${new URL(acquisition.final_locator).origin}`; }
   catch { return `${acquisition.authority.level}:${acquisition.final_locator}`; }
-}
-
-function explicitlyDescribesAgreement(observation) {
-  const text = String(observation).toLowerCase();
-  const agreement = /\bsame limits?\b|\bconsistent\b|\bequivalent\b/.test(text);
-  const negated = /\b(?:not|isn't|aren't|wasn't|weren't)\s+(?:the\s+)?same limits?\b|\bnot\s+(?:consistent|equivalent)\b/.test(text);
-  return agreement && !negated;
 }
 
 function coded(code, detail = "") { const error = new Error(code); error.code = code; error.detail = detail; return error; }
@@ -368,7 +362,7 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
         const findingForId = (id) => findingRecords.find((item) => item.finding_id === id);
         const referenceNormalizations = [];
         const conflictSlots = action.conflicts.map((proposed, conflictIndex) => {
-          if (explicitlyDescribesAgreement(proposed.observation)) { referenceNormalizations.push({ kind: "self_disclaimed_conflict", conflict_index: conflictIndex, topic: proposed.topic }); return null; }
+          if (explicitlyDescribesAgreementV02(proposed.observation)) { referenceNormalizations.push({ kind: "self_disclaimed_conflict", conflict_index: conflictIndex, topic: proposed.topic }); return null; }
           if (proposed.finding_indexes.some((index) => !proposedFindingIds[index])) throw coded("invalid_agent_action");
           const expanded = [...new Set(proposed.finding_indexes.flatMap((index) => proposedFindingIds[index]))], findingIds = expanded.filter((id) => findingForId(id)?.topic === proposed.topic);
           if (proposed.topic === "numerical_limits" && preservedCollectionFindingId) findingIds.push(preservedCollectionFindingId);
