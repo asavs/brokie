@@ -32,9 +32,9 @@
       "type": "object", "additionalProperties": false,
       "required": ["source_label", "primary_url", "selection_reason"],
       "properties": {
-        "source_label": { "type": "string", "minLength": 1 },
+        "source_label": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\r\\n]*$" },
         "primary_url": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^https?://" }] },
-        "selection_reason": { "type": "string", "minLength": 1 }
+        "selection_reason": { "type": "string", "minLength": 1, "maxLength": 500, "pattern": "^[^\\r\\n]*$" }
       }
     },
     "authority": {

@@ -7,6 +7,7 @@ import { acquisitionId } from "./canonical.mjs";
 import { inspectLinks, inspectMarkdown, paginate } from "./inspect.mjs";
 
 function coded(code, detail = "", properties = {}) { const error = new Error(code); error.code = code; error.detail = detail; Object.assign(error, properties); return error; }
+const SCOUT_FAILURE_CODES = new Set(["budget_request_exhausted", "budget_page_exhausted", "budget_byte_exhausted", "budget_time_exhausted", "budget_inference_exhausted", "depth_exceeded", "robots_denied", "ssrf_blocked", "unsupported_scheme", "unsupported_content_type", "redirect_limit_exceeded", "fetch_timeout", "http_error", "content_too_large", "path_escape", "untracked_file", "parse_error", "provider_error", "invalid_agent_action", "no_followable_link", "no_listing_found", "store_corruption", "other"]);
 
 export function sanitizeLocator(locator) {
   try { const url = new URL(locator); if (url.username || url.password) { url.username = ""; url.password = ""; } return url.href; } catch { return String(locator); }
@@ -151,7 +152,7 @@ export function createHttpTool({ artifactStore, budget, transport = fetch, looku
       const timer = setTimeout(() => { deadlineExpired = true; controller.abort(); }, remaining);
       let response, raw;
       try { response = await transport(url.href, { method: "GET", redirect: "manual", headers: { "User-Agent": userAgent, Accept: "text/html,text/plain,text/markdown" }, signal: controller.signal }); raw = await readBody(response, controller.signal); }
-      catch (error) { if (error?.code) throw error; throw coded(deadlineExpired ? "budget_time_exhausted" : error?.name === "AbortError" ? "fetch_timeout" : "http_error"); }
+      catch (error) { if (typeof error?.code === "string" && SCOUT_FAILURE_CODES.has(error.code)) throw error; throw coded(deadlineExpired ? "budget_time_exhausted" : error?.name === "AbortError" ? "fetch_timeout" : "http_error"); }
       finally { clearTimeout(timer); }
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get("location"); if (!location) throw coded("http_error");
@@ -190,7 +191,8 @@ export function createHttpTool({ artifactStore, budget, transport = fetch, looku
           const parsed = await validatePublicUrl(locator, lookup); await obeyRobots(parsed);
           const result = await dispatch(locator, { countPage: false });
           const artifact = artifactStore.put(result.bytes, { kind: "http_body", media_type: result.media_type });
-          cached = { artifact_id: artifact.artifact_id, bytes: result.bytes, final_locator: result.final_locator, http_status: result.status, last_modified: result.headers.get("last-modified") };
+          const lastModified = result.headers.get("last-modified"), parsedLastModified = lastModified ? Date.parse(lastModified) : Number.NaN;
+          cached = { artifact_id: artifact.artifact_id, bytes: result.bytes, final_locator: result.final_locator, http_status: result.status, last_modified: Number.isNaN(parsedLastModified) ? null : new Date(parsedLastModified).toISOString() };
           fetched.set(cacheKey, cached);
         }
         const acquisition = { acquisition_id: "", kind, requested_locator: locator, final_locator: cached.final_locator, depth, depth_state: "resolved", parent_acquisition_id, originating_link_id, status: "acquired", artifact_id: cached.artifact_id, http_status: cached.http_status, failure: null, authority, link: null, excerpt_ids: [] };

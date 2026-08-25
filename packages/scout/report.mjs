@@ -5,6 +5,12 @@ import { createPacketValidator } from "./validate-packet.mjs";
 
 function json(value, fallback) { return value ? JSON.parse(value) : fallback; }
 function safeLocator(locator) { try { const url = new URL(locator); if (url.username || url.password) { url.username = ""; url.password = ""; } return url.href; } catch { return locator; } }
+const REPORT_SECRET_PATTERN = /(?:api[_-]?key|authorization|bearer|password|token)\s*=/i;
+function safeReportText(value, maximum = 2000) {
+  const text = String(value ?? "");
+  if (text.length > maximum || /[\x0d\x0a]|```/.test(text) || REPORT_SECRET_PATTERN.test(text)) throw new Error("unsafe report field");
+  return text.replaceAll("`", "\\`").replaceAll("|", "\\|");
+}
 export function generateDogfoodReport({ ledger, runId, stateRoot, outputPath, command }) {
   if (/[\r\n]|```|(?:api[_-]?key|authorization|bearer|password|token)\s*=/i.test(command)) throw new Error("unsafe reproduction command");
   const run = ledger.run(runId); if (!run) throw new Error(`unknown Scout run: ${runId}`);
@@ -14,30 +20,32 @@ export function generateDogfoodReport({ ledger, runId, stateRoot, outputPath, co
   const events = ledger.db.prepare("SELECT event_type, normalized_json FROM scout_events WHERE run_id=? ORDER BY sequence").all(runId).map((row) => ({ type: row.event_type, value: JSON.parse(row.normalized_json) }));
   const attempts = ledger.db.prepare("SELECT requested_model,resolved_model,status FROM scout_attempts WHERE run_id=? ORDER BY attempt_number").all(runId);
   const seed = json(run.seed_json, {}), configured = json(run.budget_json, {}), consumed = json(run.counters_json, {});
-  const files = [...new Set(events.filter((e) => e.type === "tool" && e.value.name === "file.read").map((e) => e.value.input.relative_path))];
+  const files = [...new Set(events.filter((e) => e.type === "tool" && e.value.name === "file.read").map((e) => safeReportText(e.value.input.relative_path)))];
   const gitInspection = events.find((e) => e.type === "tool" && e.value.name === "git.inspect")?.value.output;
-  const followed = packets.flatMap(({ packet }) => packet.followed_pages.map((page) => ({ label: packet.subject.source_label, locator: safeLocator(page.requested_locator), final: safeLocator(page.final_locator), status: page.status, failure: page.failure?.code ?? "none" })));
-  const skipped = packets.flatMap(({ packet }) => packet.skipped_links.map((item) => ({ label: packet.subject.source_label, locator: safeLocator(item.link.resolved_destination ?? item.link.raw_destination), reason: item.reason_code })));
-  const uncertainties = [...new Set(packets.flatMap(({ packet }) => [...packet.uncertainties.map((u) => u.observation), ...packet.investigation.unresolved_questions]))];
-  const resolved = [...new Set(attempts.map((x) => x.resolved_model).filter(Boolean))];
+  const followed = packets.flatMap(({ packet }) => packet.followed_pages.map((page) => ({ label: safeReportText(packet.subject.source_label), locator: safeReportText(safeLocator(page.requested_locator)), final: safeReportText(safeLocator(page.final_locator)), status: safeReportText(page.status), failure: safeReportText(page.failure?.code ?? "none") })));
+  const skipped = packets.flatMap(({ packet }) => packet.skipped_links.map((item) => ({ label: safeReportText(packet.subject.source_label), locator: safeReportText(safeLocator(item.link.resolved_destination ?? item.link.raw_destination)), reason: safeReportText(item.reason_code) })));
+  const uncertainties = [...new Set(packets.flatMap(({ packet }) => [...packet.uncertainties.map((u) => safeReportText(u.observation)), ...packet.investigation.unresolved_questions.map((x) => safeReportText(x))]))];
+  const resolved = [...new Set(attempts.map((x) => x.resolved_model).filter(Boolean).map((x) => safeReportText(x)))];
   const terminalReasons = json(run.terminal_reason_codes_json, []);
-  const rows = packets.map(({ row, packet }) => `| ${row.ordinal} | ${packet.subject.source_label.replaceAll("|", "\\|")} | ${packet.subject.selection_reason.replaceAll("|", "\\|")} | \`${packet.packet_id}\` | ${packet.investigation.status} | ${row.storage_status} |`).join("\n");
+  const runText = Object.fromEntries(["run_id", "started_at", "finished_at", "provider", "requested_model", "status"].map((key) => [key, safeReportText(run[key])]));
+  const seedLocator = safeReportText(seed.locator), revision = safeReportText(packets[0]?.packet.seed.revision ?? gitInspection?.revision ?? "n/a");
+  const rows = packets.map(({ row, packet }) => `| ${row.ordinal} | ${safeReportText(packet.subject.source_label, 256)} | ${safeReportText(packet.subject.selection_reason, 500)} | \`${safeReportText(packet.packet_id)}\` | ${safeReportText(packet.investigation.status)} | ${safeReportText(row.storage_status)} |`).join("\n");
   const report = `# Scout v0.1 dogfood report
 
 Generated from the persistent Scout ledger and its referenced immutable packets. No source bodies, credentials, cookies, authorization headers, or raw provider responses are included.
 
 ## Run
 
-- Run ID: \`${runId}\`
-- UTC start: \`${run.started_at}\`
-- UTC finish: \`${run.finished_at}\`
+- Run ID: \`${runText.run_id}\`
+- UTC start: \`${runText.started_at}\`
+- UTC finish: \`${runText.finished_at}\`
 - Scout version: \`0.1.0\`
-- Seed locator: \`${seed.locator}\`
-- Exact Git commit: \`${packets[0]?.packet.seed.revision ?? gitInspection?.revision ?? "n/a"}\`
-- Provider: \`${run.provider}\`
-- Requested model: \`${run.requested_model}\`
+- Seed locator: \`${seedLocator}\`
+- Exact Git commit: \`${revision}\`
+- Provider: \`${runText.provider}\`
+- Requested model: \`${runText.requested_model}\`
 - Resolved model(s): ${resolved.length ? resolved.map((x) => `\`${x}\``).join(", ") : "none"}
-- Run status: \`${run.status}\`
+- Run status: \`${runText.status}\`
 
 ## Budget accounting
 

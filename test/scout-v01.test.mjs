@@ -132,6 +132,12 @@ rejected("unknown originating link", (p) => { p.followed_pages[0].originating_li
 rejected("mutated link", (p) => { p.followed_pages[0].link.label = "invented"; }, /link does not resolve exactly/);
 rejected("unknown timestamp acquisition", (p) => { p.provenance.source_timestamps[0].acquisition_id = `acq_sha256_${"0".repeat(64)}`; }, /timestamp references unknown/);
 rejected("incoherent acquisition state", (p) => { p.followed_pages[0].status = "failed"; p.followed_pages[0].artifact_id = null; p.followed_pages[0].failure = { code: "http_error", detail: "" }; }, /blocked or failed acquisition must have blocked depth state/);
+rejected("depth-0 parent", (p) => { p.listing.parent_acquisition_id = `acq_sha256_${"1".repeat(64)}`; }, /depth-0 listing cannot have parent/);
+rejected("listing authority", (p) => { p.listing.authority = { level: "unknown", basis: "unknown", excerpt_ids: [] }; }, /authority must be collection\/seed/);
+rejected("unknown tool provenance", (p) => { p.provenance.tools_used.push({ name: "shell.exec", version: "1" }); }, /unknown Scout tool capability/);
+rejected("followed authority", (p) => { p.followed_pages[0].authority = { level: "unknown", basis: "unknown", excerpt_ids: [] }; }, /authority is incoherent/);
+rejected("timestamp kind", (p) => { p.provenance.source_timestamps[0].kind = "http_last_modified"; }, /Last-Modified must reference acquired HTTP content/);
+rejected("unsafe selection reason", (p) => { p.subject.selection_reason = "looks valid```powershell"; }, /safe single-line text/);
 const corruptId = first.packets[0].packet.excerpts[0].artifact_id, corruptPath = artifactStore.paths(corruptId).body, original = fs.readFileSync(corruptPath);
 fs.writeFileSync(corruptPath, Buffer.concat([original, Buffer.from("x")])); assert.throws(() => validator(first.packets[0].packet), /corrupt artifact/); fs.writeFileSync(corruptPath, original);
 
@@ -171,7 +177,17 @@ const byteLimited = createHttpTool({ artifactStore, budget: new Budget({ ...budg
 await assert.rejects(() => byteLimited.fetch("https://byte-limit.example/page", { depth: 0, kind: "http_seed", authority: collectionAuthority }), /budget_byte_exhausted/); assert.equal(byteCalls, 2); assert.equal(streamCancelled, true);
 let timeCancelled = false;
 const timeLimited = createHttpTool({ artifactStore, budget: new Budget({ ...budgets, max_elapsed_ms: 25 }), lookup, transport: async (url) => url.endsWith("robots.txt") ? response(200, "", { "content-type": "text/plain" }) : new Response(new ReadableStream({ cancel() { timeCancelled = true; } }), { status: 200, headers: { "content-type": "text/plain" } }) });
-await assert.rejects(() => timeLimited.fetch("https://time-limit.example/page", { depth: 0, kind: "http_seed", authority: collectionAuthority }), /budget_time_exhausted/); assert.equal(timeCancelled, true);
+await assert.rejects(() => timeLimited.fetch("https://time-limit.example/page", { depth: 0, kind: "http_seed", authority: collectionAuthority }), (error) => error.code === "budget_time_exhausted"); assert.equal(timeCancelled, true);
+const nativeAbortRoot = path.join(temp, "native-abort"), nativeAbortLedger = new ScoutLedger(path.join(nativeAbortRoot, "ledger.sqlite")), nativeAbortBudget = new Budget(budgets);
+const nativeAbortRun = nativeAbortLedger.start({ seed: { kind: "web", locator: "https://native-abort.example/page" }, provider: "fixture", requested_model: "fixture/free", prompt_version: "test", action_schema_version: "test", budget: budgets });
+const nativeAbortTool = createHttpTool({ artifactStore, budget: nativeAbortBudget, lookup, ledger: nativeAbortLedger, runId: nativeAbortRun, transport: async (url) => {
+  if (url.endsWith("robots.txt")) return response(200, "", { "content-type": "text/plain" });
+  throw new DOMException("aborted", "AbortError");
+} });
+await assert.rejects(() => nativeAbortTool.fetch("https://native-abort.example/page", { depth: 0, kind: "http_seed", authority: collectionAuthority }), (error) => error.code === "fetch_timeout" && error.code !== 20);
+const nativeAbortCall = nativeAbortLedger.db.prepare("SELECT status,failure_code FROM scout_tool_calls WHERE run_id=?").get(nativeAbortRun);
+assert.deepEqual([nativeAbortCall.status, nativeAbortCall.failure_code], ["failed", "fetch_timeout"]);
+assert.equal(JSON.parse(nativeAbortLedger.db.prepare("SELECT normalized_json FROM scout_events WHERE run_id=? AND event_type='tool'").get(nativeAbortRun).normalized_json).failure_code, "fetch_timeout"); nativeAbortLedger.close();
 let depthCalls = 0; const depthLimited = createHttpTool({ artifactStore, budget: new Budget(budgets), lookup, transport: async () => { depthCalls += 1; return response(200, ""); } });
 await assert.rejects(() => depthLimited.fetch("https://depth.example/page", { depth: 2, kind: "http_link", authority: linkAuthority }), /depth_exceeded/); assert.equal(depthCalls, 0);
 assert.equal(robotsAllows("User-agent: *\nDisallow: /\nAllow: /public/", "/public/item"), true);
@@ -191,7 +207,7 @@ const webPackets = new PacketStore(webRoot, createPacketValidator(webArtifacts))
 const webTransport = async (url) => {
   if (url.endsWith("/robots.txt")) return response(200, "User-agent: *\nDisallow:\n", { "content-type": "text/plain" });
   if (url === "https://catalog.example/resources") return response(200, "<ul><li><a href=\"/detail\">Quartz</a> — static resource.</li></ul>", { "content-type": "text/html" });
-  if (url === "https://catalog.example/detail") return response(200, "Quartz linked evidence.", { "content-type": "text/plain" });
+  if (url === "https://catalog.example/detail") return response(200, "Quartz linked evidence.", { "content-type": "text/plain", "last-modified": "not a valid HTTP date" });
   throw new Error(`unmocked network attempt: ${url}`);
 };
 const webProvider = new ScriptedProvider([
@@ -200,13 +216,33 @@ const webProvider = new ScriptedProvider([
 ]);
 const webRun = await runScoutV01({ seed: { kind: "web", locator: "https://catalog.example/resources" }, provider: webProvider, artifactStore: webArtifacts, packetStore: webPackets, ledger: webLedger, budgets: { ...budgets, max_inference_calls: 3 }, target_packet_count: 1, transport: webTransport, lookup });
 assert.equal(webRun.packets.length, 1); assert.equal(webRun.packets[0].packet.listing.kind, "http_seed"); assert.equal(webRun.packets[0].packet.investigation.status, "complete");
+assert.deepEqual(webRun.packets[0].packet.provenance.source_timestamps, []);
 assert.deepEqual(webRun.packets[0].packet.provenance.tools_used.map((tool) => tool.name), ["http.fetch", "markdown.inspect", "link.inspect"]); webLedger.close();
 
 assert.throws(() => validateAction({ type: "list_files", cursor: -1 }), /invalid_agent_action/);
 assert.throws(() => validateAction({ type: "skip_link", listing_index: 0, link_index: 0, reason_code: "invented" }), /invalid_agent_action/);
 assert.throws(() => validateAction({ type: "select_listings", listings: [{ artifact_id: `art_sha256_${"0".repeat(64)}`, start_byte: 0, end_byte: 1, source_label: "", selection_reason: "x", primary_link_index: 0 }] }), /invalid_agent_action/);
+for (const hostile of ["line one\nline two", "```powershell", "api_key=do-not-render"]) assert.throws(() => validateAction({ type: "select_listings", listings: [{ artifact_id: `art_sha256_${"0".repeat(64)}`, start_byte: 0, end_byte: 1, source_label: "valid", selection_reason: hostile, primary_link_index: 0 }] }), /invalid_agent_action/);
+assert.throws(() => validateAction({ type: "select_listings", listings: [{ artifact_id: `art_sha256_${"0".repeat(64)}`, start_byte: 0, end_byte: 1, source_label: "line one\nline two", selection_reason: "valid", primary_link_index: 0 }] }), /invalid_agent_action/);
 
 function scoutState(name) { const root = path.join(temp, name), artifacts = new ArtifactStore(root), scoutLedger = new ScoutLedger(path.join(root, "ledger.sqlite")); return { root, artifacts, scoutLedger, packets: new PacketStore(root, createPacketValidator(artifacts)) }; }
+const atomicState = scoutState("atomic-selection");
+const corruptSecondSelection = (context) => { const action = actions[3](context); action.listings[1].source_label = `${action.listings[1].source_label} corrupted`; return action; };
+const atomicProvider = new ScriptedProvider([...actions.slice(0, 3), corruptSecondSelection, actions[3], { type: "finalize" }]);
+const atomicRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: atomicProvider, artifactStore: atomicState.artifacts, packetStore: atomicState.packets, ledger: atomicState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
+assert.equal(atomicRun.status, "blocked"); assert.equal(atomicRun.packets.length, 5); assert.ok(atomicRun.packets.every(({ packet }) => packet.investigation.status === "blocked"));
+assert.equal(atomicState.scoutLedger.db.prepare("SELECT COUNT(*) count FROM scout_events WHERE run_id=? AND event_type='listings_selected'").get(atomicRun.run_id).count, 1);
+const atomicAttempt = atomicState.scoutLedger.db.prepare("SELECT status,failure_code FROM scout_attempts WHERE run_id=? AND attempt_number=4").get(atomicRun.run_id);
+assert.deepEqual([atomicAttempt.status, atomicAttempt.failure_code], ["invalid_agent_action", "invalid_agent_action"]); atomicState.scoutLedger.close();
+
+const duplicateState = scoutState("duplicate-link-actions"), duplicateProvider = new ScriptedProvider([...actions.slice(0, 4),
+  { type: "investigate_link", listing_index: 0, link_index: 0 }, { type: "investigate_link", listing_index: 0, link_index: 0 },
+  { type: "skip_link", listing_index: 0, link_index: 1, reason_code: "other" }, { type: "skip_link", listing_index: 0, link_index: 1, reason_code: "other" }, { type: "finalize" },
+]);
+const duplicateRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: duplicateProvider, artifactStore: duplicateState.artifacts, packetStore: duplicateState.packets, ledger: duplicateState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
+assert.equal(duplicateRun.packets.length, 5); assert.equal(duplicateRun.packets[0].packet.followed_pages.length, 1); assert.equal(duplicateRun.packets[0].packet.skipped_links.length, 1);
+assert.deepEqual(duplicateState.scoutLedger.db.prepare("SELECT attempt_number,status,failure_code FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action' ORDER BY attempt_number").all(duplicateRun.run_id).map((row) => [row.attempt_number, row.status, row.failure_code]), [[6, "invalid_agent_action", "invalid_agent_action"], [8, "invalid_agent_action", "invalid_agent_action"]]); duplicateState.scoutLedger.close();
+
 const failureState = scoutState("provider-failure"); const selectionProvider = new ScriptedProvider(actions.slice(0, 4)); let selectionCalls = 0;
 const failAfterSelection = { provider: "scripted", model: "scripted/free", async complete(messages, options) { selectionCalls += 1; if (selectionCalls <= 4) return selectionProvider.complete(messages, options); throw Object.assign(new Error("provider unavailable"), { code: "provider_error" }); } };
 const preserved = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: failAfterSelection, artifactStore: failureState.artifacts, packetStore: failureState.packets, ledger: failureState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
@@ -214,7 +250,9 @@ assert.equal(selectionCalls, 5); assert.equal(preserved.status, "blocked"); asse
 
 const invalidState = scoutState("invalid-actions"), invalidProvider = new ScriptedProvider([{ type: "list_files", cursor: -1 }, { type: "skip_link", listing_index: -1, link_index: 0, reason_code: "other" }]);
 const invalidRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: invalidProvider, artifactStore: invalidState.artifacts, packetStore: invalidState.packets, ledger: invalidState.scoutLedger, budgets, target_packet_count: 5, transport, lookup });
-assert.equal(invalidProvider.calls, 2); assert.equal(invalidRun.status, "failed"); assert.equal(invalidState.scoutLedger.run(invalidRun.run_id).status, "failed"); invalidState.scoutLedger.close();
+assert.equal(invalidProvider.calls, 2); assert.equal(invalidRun.status, "failed");
+const invalidLedgerRun = invalidState.scoutLedger.run(invalidRun.run_id); assert.equal(invalidLedgerRun.status, "failed"); assert.deepEqual(JSON.parse(invalidLedgerRun.terminal_reason_codes_json), ["invalid_agent_action", "invalid_agent_action"]);
+assert.deepEqual(invalidState.scoutLedger.db.prepare("SELECT status,failure_code FROM scout_attempts WHERE run_id=? ORDER BY attempt_number").all(invalidRun.run_id).map((row) => [row.status, row.failure_code]), [["invalid_agent_action", "invalid_agent_action"], ["invalid_agent_action", "invalid_agent_action"]]); invalidState.scoutLedger.close();
 
 const inferenceState = scoutState("inference-limit"), inferenceProvider = new ScriptedProvider(actions);
 const inferenceRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: inferenceProvider, artifactStore: inferenceState.artifacts, packetStore: inferenceState.packets, ledger: inferenceState.scoutLedger, budgets: { ...budgets, max_inference_calls: 1 }, target_packet_count: 5, transport, lookup });
@@ -222,7 +260,9 @@ assert.equal(inferenceProvider.calls, 1); assert.equal(inferenceRun.status, "fai
 
 const timeState = scoutState("provider-time"), timeProvider = { provider: "stall", model: "stall/free", calls: 0, aborted: false, complete(_messages, { signal }) { this.calls += 1; return new Promise((resolve, reject) => signal.addEventListener("abort", () => { this.aborted = true; reject(Object.assign(new Error("budget_time_exhausted"), { code: "budget_time_exhausted" })); }, { once: true })); } };
 const timedRun = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: timeProvider, artifactStore: timeState.artifacts, packetStore: timeState.packets, ledger: timeState.scoutLedger, budgets: { ...budgets, max_elapsed_ms: 25 }, target_packet_count: 5, transport, lookup, repositoryInspector() { return fixtureRepository; } });
-assert.equal(timeProvider.calls, 1); assert.equal(timeProvider.aborted, true); assert.equal(timedRun.status, "failed"); timeState.scoutLedger.close();
+assert.equal(timeProvider.calls, 1); assert.equal(timeProvider.aborted, true); assert.equal(timedRun.status, "failed");
+const timedLedgerRun = timeState.scoutLedger.run(timedRun.run_id), timedAttempt = timeState.scoutLedger.db.prepare("SELECT status,failure_code FROM scout_attempts WHERE run_id=?").get(timedRun.run_id);
+assert.deepEqual(JSON.parse(timedLedgerRun.terminal_reason_codes_json), ["budget_time_exhausted"]); assert.deepEqual([timedAttempt.status, timedAttempt.failure_code], ["budget_time_exhausted", "budget_time_exhausted"]); timeState.scoutLedger.close();
 
 const repositoryState = scoutState("repository-failure");
 const repositoryFailure = await runScoutV01({ seed: { kind: "git", locator: repo }, provider: new ScriptedProvider(actions), artifactStore: repositoryState.artifacts, packetStore: repositoryState.packets, ledger: repositoryState.scoutLedger, budgets, target_packet_count: 5, transport, lookup, repositoryInspector() { throw Object.assign(new Error("broken repository"), { code: "other" }); } });
@@ -236,6 +276,9 @@ const reportPath = path.join(temp, "fixture-report.md");
 generateDogfoodReport({ ledger, runId: first.run_id, stateRoot, outputPath: reportPath, command: "npm run scout:v01 -- --kind=git --seed=C:\\fixture --provider=nvidia --model=fixture/free" });
 const report = fs.readFileSync(reportPath, "utf8"); assert.match(report, /structural sample 1/); assert.match(report, /Aster/); assert.match(report, /Deliberately skipped selected links/); assert.doesNotMatch(report, /NVIDIA_NIM_API_KEY|OPENROUTER_API_KEY|Bearer /);
 assert.throws(() => generateDogfoodReport({ ledger, runId: first.run_id, stateRoot, outputPath: reportPath, command: "npm run x -- --api_key=secret" }), /unsafe reproduction command/);
+ledger.db.prepare("UPDATE scout_runs SET provider=? WHERE run_id=?").run("unsafe\n```provider", first.run_id);
+assert.throws(() => generateDogfoodReport({ ledger, runId: first.run_id, stateRoot, outputPath: reportPath, command: "npm run scout:v01" }), /unsafe report field/);
+ledger.db.prepare("UPDATE scout_runs SET provider=? WHERE run_id=?").run("scripted", first.run_id);
 
 const fixtureCandidate = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures", "data-contract", "telemetry-dev.json"), "utf8"));
 const observedAt = "2026-08-24T12:00:00.000Z", observation = prepareSourceObservation(record1, observedAt), candidate = structuredClone(fixtureCandidate.candidate);
