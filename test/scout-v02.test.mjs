@@ -98,6 +98,24 @@ class SubjectFailureProvider extends ResearchProvider {
   }
 }
 
+class MissingComparisonProvider extends ResearchProvider {
+  constructor(order, model) { super(order, model); this.omitted = false; }
+  async complete(messages) {
+    const reply = await super.complete(messages), action = JSON.parse(reply.content);
+    if (!this.omitted && action.type === "record_research" && action.findings.some(({ statement_segment_id }) => statement_segment_id.endsWith(":listing"))) {
+      this.omitted = true;
+      action.findings.splice(1, 1);
+      action.conflicts = [];
+      action.outcomes = action.outcomes.map((outcome) => {
+        if (outcome.topic === "numerical_limits") return { ...outcome, status: "answered", finding_indexes: [1], conflict_indexes: [], unresolved_questions: [] };
+        return { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 1 ? index - 1 : index) };
+      });
+      return { ...reply, content: JSON.stringify(action) };
+    }
+    return reply;
+  }
+}
+
 const budgets = { max_requests: 20, max_pages: 8, max_bytes: 1_000_000, max_elapsed_ms: 30_000, max_inference_calls: 16, max_depth: 2 };
 function state(name) { const root = path.join(temp, name), artifacts = new ArtifactStore(root), ledger = new ScoutLedger(path.join(root, "ledger.sqlite")), validator = createPacketValidatorV02(artifacts), packets = new PacketStore(root, validator); return { root, artifacts, ledger, validator, packets }; }
 const lineageState = state("readable-lineage"), dynamicA = Buffer.from("<html><script>nonce-a</script><body><p>Stable offer text.</p></body></html>"), dynamicB = Buffer.from("<html><script>nonce-b</script><body><p>Stable offer text.</p></body></html>"), rawA = lineageState.artifacts.put(dynamicA, { kind: "http_body", media_type: "text/html" }), rawB = lineageState.artifacts.put(dynamicB, { kind: "http_body", media_type: "text/html" }), readableA = createReadableArtifact(dynamicA, "text/html", lineageState.artifacts), readableB = createReadableArtifact(dynamicB, "text/html", lineageState.artifacts);
@@ -120,6 +138,10 @@ first.validator(alpha); first.validator(beta);
 const isolatedState = state("isolated-failure"), isolatedResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new SubjectFailureProvider(["Alpha", "Beta"], "route-isolated"), artifactStore: isolatedState.artifacts, packetStore: isolatedState.packets, ledger: isolatedState.ledger, budgets, target_packet_count: 2, target_labels: ["Alpha", "Beta"], transport, lookup });
 assert.equal(isolatedResult.status, "completed"); assert.equal(isolatedResult.packets.length, 2); assert.ok(isolatedResult.packets.find(({ packet }) => packet.subject.source_label === "Alpha").packet.research_outcomes.every(({ status }) => status === "blocked"));
 assert.equal(isolatedState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_events WHERE run_id=? AND event_type='research_blocked'").get(isolatedResult.run_id).count, 1); isolatedState.ledger.close();
+
+const comparisonState = state("comparison-recovery"), comparisonResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new MissingComparisonProvider(["Alpha"], "route-comparison"), artifactStore: comparisonState.artifacts, packetStore: comparisonState.packets, ledger: comparisonState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
+assert.equal(comparisonResult.status, "completed"); assert.equal(comparisonResult.packets[0].packet.conflicts.length, 1);
+assert.equal(comparisonState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action'").get(comparisonResult.run_id).count, 1); comparisonState.ledger.close();
 
 const second = await run("second", ["Alpha"], "different-free-route", shared), secondAlpha = second.result.packets[0];
 assert.equal(secondAlpha.packet.packet_id, alpha.packet_id); assert.equal(secondAlpha.storage_status, "reused");
