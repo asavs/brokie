@@ -184,8 +184,8 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
   }
 
   function refreshActivePages() {
-    context.observations = context.observations.filter(({ type }) => !["git", "files", "collection", "page", "selected"].includes(type));
     const active = subjects.find(({ researched }) => !researched);
+    context.observations = context.observations.filter((item) => !["git", "files", "collection", "page", "selected"].includes(item.type) && !(item.type === "correction" && item.listing_index !== (active?.index ?? null)));
     if (!active) return;
     context.observations.push({ type: "selected", subjects: [{ listing_index: active.index, source_label: active.chosen.source_label, primary_url: active.primary_url, listing_segment: { segment_id: `${active.listing.acquisition_id}:listing`, artifact_id: active.listingExcerpt.artifact_id, start_byte: active.listingExcerpt.start_byte, end_byte: active.listingExcerpt.end_byte, text: active.listingExcerpt.text } }] });
     for (const fetched of active.pages) context.observations.push(pageObservation(active, fetched.page, fetched.segments, fetched.relevant ?? [], fetched.incomplete));
@@ -241,7 +241,7 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
       else { protocolFailureStreak += 1; providerFailureStreak = 0; }
       if (code.startsWith("budget_")) break;
       if (protocolFailureStreak >= 3 || providerFailureStreak >= 3) { if (subjects.length && blockActiveSubject(code)) continue; break; }
-      context.observations.push({ type: "correction", failure_code: code, instruction: "Return one action allowed by allowed_actions." }); continue;
+      context.observations.push({ type: "correction", listing_index: context.active_listing_index ?? null, failure_code: code, instruction: "Return one action allowed by allowed_actions." }); continue;
     }
     try {
       budget.checkTime(); if (!context.allowed_actions.includes(action.type)) throw coded("invalid_agent_action");
@@ -363,7 +363,7 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
       terminalReasons.push(code); protocolFailureStreak += 1; providerFailureStreak = 0; ledger.failAttempt(runId, attemptNumber, code);
       if (code.startsWith("budget_")) break;
       if (protocolFailureStreak >= 3) { if (subjects.length && blockActiveSubject(code)) continue; break; }
-      context.observations.push({ type: "correction", failure_code: code, validation_detail: error.detail || null, instruction: "Use only the active subject and supplied IDs. Findings require explicit/parsed/inferred derivation and complete primitive keys. not_found or blocked outcomes reference no findings." });
+      context.observations.push({ type: "correction", listing_index: context.active_listing_index ?? null, failure_code: code, validation_detail: error.detail || null, instruction: "Use only the active subject and supplied IDs. Findings require explicit/parsed/inferred derivation and complete primitive keys. not_found or blocked outcomes reference no findings." });
     }
   }
 
