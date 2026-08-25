@@ -52,7 +52,8 @@ class ResearchProvider {
     else if (allowed.includes("select_listings")) {
       const collection = context.observations.findLast((item) => item.type === "collection");
       action = { type: "select_listings", listings: this.order.map((label) => { const item = collection.listing_candidates.find((candidate) => candidate.source_label === label); return { artifact_id: collection.artifact_id, start_byte: item.start_byte, end_byte: item.end_byte, source_label: item.source_label, primary_link_index: 0 }; }) };
-    } else {
+    } else if (allowed.includes("finalize")) action = { type: "finalize" };
+    else {
       const active = context.active_listing_index, selected = context.observations.find((item) => item.type === "selected").subjects.find((item) => item.listing_index === active);
       if (allowed.includes("follow_evidence_link") && selected.source_label === "Alpha") {
         const page = context.observations.find((item) => item.type === "page" && item.listing_index === active && item.role === "listed_page");
@@ -80,9 +81,19 @@ class ResearchProvider {
             { topic: "material_caveats", status: "answered", finding_indexes: [5], conflict_indexes: [], unresolved_questions: [] },
           ] };
         }
-      } else action = { type: "finalize" };
+      }
     }
     return { content: JSON.stringify(action), resolved_model: `${this.model}/resolved`, usage: null };
+  }
+}
+
+class SubjectFailureProvider extends ResearchProvider {
+  async complete(messages) {
+    const context = JSON.parse(messages.at(-1).content), selected = context.observations.find(({ type }) => type === "selected")?.subjects?.[0];
+    if (selected?.source_label === "Alpha" && context.allowed_actions.some((type) => ["follow_evidence_link", "record_research"].includes(type))) {
+      this.calls += 1; return { content: "{}", resolved_model: `${this.model}/resolved`, usage: null };
+    }
+    return super.complete(messages);
   }
 }
 
@@ -102,6 +113,10 @@ assert.ok(alpha.findings.every(({ evidence_excerpt_ids }) => evidence_excerpt_id
 for (const excerpt of alpha.excerpts.filter(({ role }) => role === "research_evidence")) assert.notEqual(first.artifacts.read(excerpt.artifact_id).manifest.media_type, "text/html");
 assert.doesNotMatch(JSON.stringify(alpha), /Ignore prior instructions|window\.__data/);
 first.validator(alpha); first.validator(beta);
+
+const isolatedState = state("isolated-failure"), isolatedResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new SubjectFailureProvider(["Alpha", "Beta"], "route-isolated"), artifactStore: isolatedState.artifacts, packetStore: isolatedState.packets, ledger: isolatedState.ledger, budgets, target_packet_count: 2, target_labels: ["Alpha", "Beta"], transport, lookup });
+assert.equal(isolatedResult.status, "completed"); assert.equal(isolatedResult.packets.length, 2); assert.ok(isolatedResult.packets.find(({ packet }) => packet.subject.source_label === "Alpha").packet.research_outcomes.every(({ status }) => status === "blocked"));
+assert.equal(isolatedState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_events WHERE run_id=? AND event_type='research_blocked'").get(isolatedResult.run_id).count, 1); isolatedState.ledger.close();
 
 const second = await run("second", ["Alpha"], "different-free-route", shared), secondAlpha = second.result.packets[0];
 assert.equal(secondAlpha.packet.packet_id, alpha.packet_id); assert.equal(secondAlpha.storage_status, "reused");
