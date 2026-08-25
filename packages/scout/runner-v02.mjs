@@ -347,6 +347,7 @@ export async function runScoutV02({ seed, provider, artifactStore, packetStore, 
         const conflicts = action.conflicts.map((proposed, conflictIndex) => {
           if (proposed.finding_indexes.some((index) => !proposedFindingIds[index])) throw coded("invalid_agent_action");
           const expanded = [...new Set(proposed.finding_indexes.flatMap((index) => proposedFindingIds[index]))], findingIds = expanded.filter((id) => findingForId(id)?.topic === proposed.topic);
+          if (proposed.topic === "numerical_limits" && preservedCollectionFindingId) findingIds.push(preservedCollectionFindingId);
           if (findingIds.length !== expanded.length) referenceNormalizations.push({ kind: "conflict_finding_topic_scope", conflict_index: conflictIndex, topic: proposed.topic, removed_count: expanded.length - findingIds.length });
           if (findingIds.length < 2) throw coded("invalid_agent_action", "A conflict must resolve to at least two source-local findings on its topic.");
           const conflict = { conflict_id: "", topic: proposed.topic, finding_ids: findingIds.sort(), observation: proposed.observation }; conflict.conflict_id = conflictIdV02(conflict); return conflict;

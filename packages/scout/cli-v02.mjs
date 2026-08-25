@@ -12,7 +12,9 @@ const quote = (value) => `'${String(value).replaceAll("'", "''")}'`;
 const kind = option("kind", "git"), locator = option("seed"), providerName = option("provider", "openrouter"), model = option("model", providerName === "openrouter" ? "openrouter/free" : null);
 if (!locator || !model) throw new Error("--seed and --model are required");
 const root = path.resolve(import.meta.dirname, "../.."), stateRoot = path.resolve(option("state-dir", path.join(root, "var", "scout-v0.2")));
-const targetsPath = option("targets", null), targetLabels = targetsPath ? JSON.parse(fs.readFileSync(path.resolve(targetsPath), "utf8")).source_labels : [];
+const targetsPath = option("targets", null), targetLabel = option("target-label", null);
+if (targetsPath && targetLabel) throw new Error("use either --targets or --target-label");
+const targetLabels = targetLabel ? [targetLabel] : targetsPath ? JSON.parse(fs.readFileSync(path.resolve(targetsPath), "utf8")).source_labels : [];
 const targetCount = Number(option("target-packet-count", targetLabels.length || "5"));
 const budgets = { max_requests: Number(option("max-requests", "30")), max_pages: Number(option("max-pages", "12")), max_bytes: Number(option("max-bytes", "5000000")), max_elapsed_ms: Number(option("max-elapsed-ms", "300000")), max_inference_calls: Number(option("max-inference-calls", "24")), max_depth: Number(option("max-depth", "2")) };
 fs.mkdirSync(stateRoot, { recursive: true }); const artifacts = new ArtifactStore(stateRoot), ledger = new ScoutLedger(path.join(stateRoot, "scout-ledger.sqlite"));
@@ -21,7 +23,7 @@ const provider = createCompatibleProvider({ provider: providerName, model, apiKe
 try {
   const result = await runScoutV02({ seed: { kind, locator }, provider, artifactStore: artifacts, packetStore: packets, ledger, budgets, target_packet_count: targetCount, target_labels: targetLabels, restricted_trace_root: path.join(stateRoot, "restricted-traces") });
   const reportPath = option("report", null);
-  const command = `npm run scout:v02 -- --kind=${quote(kind)} --seed=${quote(locator)} --provider=${quote(providerName)} --model=${quote(model)}${targetsPath ? ` --targets=${quote(targetsPath)}` : ""} --target-packet-count=${targetCount} --max-requests=${budgets.max_requests} --max-pages=${budgets.max_pages} --max-bytes=${budgets.max_bytes} --max-elapsed-ms=${budgets.max_elapsed_ms} --max-inference-calls=${budgets.max_inference_calls} --max-depth=${budgets.max_depth} --state-dir=${quote(stateRoot)}${reportPath ? ` --report=${quote(reportPath)}` : ""}`;
+  const command = `npm run scout:v02 -- --kind=${quote(kind)} --seed=${quote(locator)} --provider=${quote(providerName)} --model=${quote(model)}${targetsPath ? ` --targets=${quote(targetsPath)}` : ""}${targetLabel ? ` --target-label=${quote(targetLabel)}` : ""} --target-packet-count=${targetCount} --max-requests=${budgets.max_requests} --max-pages=${budgets.max_pages} --max-bytes=${budgets.max_bytes} --max-elapsed-ms=${budgets.max_elapsed_ms} --max-inference-calls=${budgets.max_inference_calls} --max-depth=${budgets.max_depth} --state-dir=${quote(stateRoot)}${reportPath ? ` --report=${quote(reportPath)}` : ""}`;
   const manifestPath = path.join(stateRoot, "runs", `${result.run_id}-manifest.json`); fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
   fs.writeFileSync(manifestPath, `${JSON.stringify({ run_id: result.run_id, reproduction_command: command, report_path: reportPath ? path.resolve(reportPath) : null }, null, 2)}\n`);
   if (reportPath) generateDogfoodReportV02({ ledger, runId: result.run_id, stateRoot, outputPath: path.resolve(reportPath), command });

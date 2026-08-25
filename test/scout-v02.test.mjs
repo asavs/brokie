@@ -135,6 +135,22 @@ class MixedSourceProvider extends ResearchProvider {
   }
 }
 
+class OmittedConflictEvidenceProvider extends ResearchProvider {
+  async complete(messages) {
+    const reply = await super.complete(messages), action = JSON.parse(reply.content);
+    if (action.type === "record_research" && action.findings.some(({ statement_segment_id }) => statement_segment_id.endsWith(":listing"))) {
+      action.findings.splice(1, 1);
+      action.conflicts = [{ topic: "numerical_limits", finding_indexes: [0, 1], observation: "The quantified collection statement differs from current first-party limits." }];
+      action.outcomes = action.outcomes.map((outcome) => {
+        if (outcome.topic === "numerical_limits") return { ...outcome, status: "conflicting", finding_indexes: [1], conflict_indexes: [0], unresolved_questions: [] };
+        return { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 1 ? index - 1 : index) };
+      });
+      return { ...reply, content: JSON.stringify(action) };
+    }
+    return reply;
+  }
+}
+
 const budgets = { max_requests: 20, max_pages: 8, max_bytes: 1_000_000, max_elapsed_ms: 30_000, max_inference_calls: 16, max_depth: 2 };
 function state(name) { const root = path.join(temp, name), artifacts = new ArtifactStore(root), ledger = new ScoutLedger(path.join(root, "ledger.sqlite")), validator = createPacketValidatorV02(artifacts), packets = new PacketStore(root, validator); return { root, artifacts, ledger, validator, packets }; }
 const lineageState = state("readable-lineage"), dynamicA = Buffer.from("<html><script>nonce-a</script><body><p>Stable offer text.</p></body></html>"), dynamicB = Buffer.from("<html><script>nonce-b</script><body><p>Stable offer text.</p></body></html>"), rawA = lineageState.artifacts.put(dynamicA, { kind: "http_body", media_type: "text/html" }), rawB = lineageState.artifacts.put(dynamicB, { kind: "http_body", media_type: "text/html" }), readableA = createReadableArtifact(dynamicA, "text/html", lineageState.artifacts), readableB = createReadableArtifact(dynamicB, "text/html", lineageState.artifacts);
@@ -166,6 +182,10 @@ assert.equal(comparisonPacket.research_outcomes.find(({ topic }) => topic === "n
 const mixedState = state("mixed-source-recovery"), mixedResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new MixedSourceProvider(["Alpha"], "route-mixed"), artifactStore: mixedState.artifacts, packetStore: mixedState.packets, ledger: mixedState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
 const mixedPacket = mixedResult.packets[0].packet, mixedNumerical = mixedPacket.findings.filter(({ topic }) => topic === "numerical_limits");
 assert.equal(mixedResult.status, "completed"); assert.equal(mixedNumerical.length, 2); assert.ok(mixedNumerical.every(({ acquisition_ids }) => acquisition_ids.length === 1)); assert.equal(mixedPacket.conflicts[0].finding_ids.length, 2); mixedState.ledger.close();
+
+const omittedConflictState = state("omitted-conflict-evidence"), omittedConflictResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new OmittedConflictEvidenceProvider(["Alpha"], "route-omitted-conflict"), artifactStore: omittedConflictState.artifacts, packetStore: omittedConflictState.packets, ledger: omittedConflictState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
+const omittedConflictPacket = omittedConflictResult.packets[0].packet;
+assert.equal(omittedConflictResult.status, "completed"); assert.equal(omittedConflictPacket.research_outcomes.find(({ topic }) => topic === "numerical_limits").status, "conflicting"); assert.equal(omittedConflictPacket.conflicts[0].finding_ids.length, 2); omittedConflictState.ledger.close();
 
 const second = await run("second", ["Alpha"], "different-free-route", shared), secondAlpha = second.result.packets[0];
 assert.equal(secondAlpha.packet.packet_id, alpha.packet_id); assert.equal(secondAlpha.storage_status, "reused");
