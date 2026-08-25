@@ -84,7 +84,7 @@ export class ArtifactStore {
 }
 
 export class PacketStore {
-  constructor(root, validator) { this.root = path.resolve(root); this.validator = validator; }
+  constructor(root, validator, identity = packetId) { this.root = path.resolve(root); this.validator = validator; this.identity = identity; }
   packetPath(id) {
     const hash = id.replace(/^scoutpkt_sha256_/, "");
     if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error("invalid packet ID");
@@ -92,7 +92,7 @@ export class PacketStore {
   }
   put(packet) {
     this.validator(packet);
-    if (packet.packet_id !== packetId(packet)) throw new Error("packet_id does not match canonical packet");
+    if (packet.packet_id !== this.identity(packet)) throw new Error("packet_id does not match canonical packet");
     const bytes = Buffer.from(`${canonicalJson(packet)}\n`);
     return { packet_id: packet.packet_id, status: atomicCreate(this.packetPath(packet.packet_id), bytes) };
   }

@@ -10,14 +10,15 @@ export class BudgetError extends Error {
 }
 
 export class Budget {
-  constructor(configured, clock = () => Date.now()) {
+  constructor(configured, clock = () => Date.now(), { requiredMaxDepth = 1 } = {}) {
     for (const name of ["max_requests", "max_pages", "max_bytes", "max_elapsed_ms", "max_inference_calls"]) {
       if (!Number.isInteger(configured[name]) || configured[name] < 1) throw new Error(`${name} must be a positive integer`);
     }
-    if (configured.max_depth !== 1) throw new Error("Scout v0.1 max_depth must be 1");
+    if (configured.max_depth !== requiredMaxDepth) throw new Error(`Scout max_depth must be ${requiredMaxDepth}`);
     this.configured = Object.freeze({ ...configured });
     this.consumed = { requests: 0, pages: 0, bytes: 0, inference_calls: 0, max_depth: 0 };
     this.clock = clock;
+    this.requiredMaxDepth = requiredMaxDepth;
     this.started = clock();
   }
   checkTime() {
@@ -39,7 +40,7 @@ export class Budget {
   }
   depth(value) {
     this.checkTime();
-    if (!Number.isInteger(value) || value < 0 || value > this.configured.max_depth || value > 1) throw new BudgetError("depth_exceeded");
+    if (!Number.isInteger(value) || value < 0 || value > this.configured.max_depth || value > this.requiredMaxDepth) throw new BudgetError("depth_exceeded");
     this.consumed.max_depth = Math.max(this.consumed.max_depth, value);
   }
   snapshot() { return { configured: { ...this.configured }, consumed: { ...this.consumed } }; }

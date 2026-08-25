@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brokie.local/schemas/scout-packet.v0.2.schema.json",
+  "title": "Brokie ScoutPacket v0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "packet_id", "research_request", "seed", "subject", "acquisitions", "excerpts", "findings", "conflicts", "research_outcomes", "unresolved_questions"],
+  "properties": {
+    "schema_version": { "const": "0.2.0" },
+    "packet_id": { "$ref": "#/$defs/packetId" },
+    "research_request": { "$ref": "#/$defs/researchRequest" },
+    "seed": { "$ref": "#/$defs/seed" },
+    "subject": { "$ref": "#/$defs/subject" },
+    "acquisitions": { "type": "array", "items": { "$ref": "#/$defs/acquisition" }, "minItems": 1 },
+    "excerpts": { "type": "array", "items": { "$ref": "#/$defs/excerpt" }, "minItems": 1 },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "conflicts": { "type": "array", "items": { "$ref": "#/$defs/conflict" } },
+    "research_outcomes": { "type": "array", "items": { "$ref": "#/$defs/outcome" }, "minItems": 1 },
+    "unresolved_questions": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 }, "uniqueItems": true }
+  },
+  "$defs": {
+    "packetId": { "type": "string", "pattern": "^scoutpkt_sha256_[0-9a-f]{64}$" },
+    "artifactId": { "type": "string", "pattern": "^art_sha256_[0-9a-f]{64}$" },
+    "acquisitionId": { "type": "string", "pattern": "^acq_sha256_[0-9a-f]{64}$" },
+    "excerptId": { "type": "string", "pattern": "^exc_sha256_[0-9a-f]{64}$" },
+    "findingId": { "type": "string", "pattern": "^finding_sha256_[0-9a-f]{64}$" },
+    "conflictId": { "type": "string", "pattern": "^conflict_sha256_[0-9a-f]{64}$" },
+    "linkId": { "type": "string", "pattern": "^link_sha256_[0-9a-f]{64}$" },
+    "topic": { "enum": ["benefit", "numerical_limits", "requirements", "eligibility", "material_caveats"] },
+    "researchTopic": {
+      "type": "object", "additionalProperties": false,
+      "required": ["topic", "question"],
+      "properties": {
+        "topic": { "$ref": "#/$defs/topic" },
+        "question": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "researchRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_version", "request_id", "objective", "topics"],
+      "properties": {
+        "request_version": { "const": "0.2.0" },
+        "request_id": { "type": "string", "pattern": "^research_sha256_[0-9a-f]{64}$" },
+        "objective": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "topics": { "type": "array", "items": { "$ref": "#/$defs/researchTopic" }, "minItems": 1, "maxItems": 10 }
+      }
+    },
+    "seed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "locator", "revision"],
+      "properties": {
+        "kind": { "enum": ["git", "web"] },
+        "locator": { "type": "string", "minLength": 1 },
+        "revision": { "type": ["string", "null"] }
+      }
+    },
+    "subject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_label", "primary_url", "collection_excerpt_id"],
+      "properties": {
+        "source_label": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\r\\n]*$" },
+        "primary_url": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^https?://" }] },
+        "collection_excerpt_id": { "$ref": "#/$defs/excerptId" }
+      }
+    },
+    "authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["level", "basis"],
+      "properties": {
+        "level": { "enum": ["collection", "linked_first_party", "linked_third_party", "unknown"] },
+        "basis": { "enum": ["seed", "same_origin", "cross_origin", "unknown"] }
+      }
+    },
+    "failure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 100 }
+      }
+    },
+    "link": {
+      "type": "object", "additionalProperties": false,
+      "required": ["link_id", "source_artifact_id", "start_byte", "end_byte", "label", "raw_destination", "resolved_destination", "source_depth"],
+      "properties": {
+        "link_id": { "$ref": "#/$defs/linkId" },
+        "source_artifact_id": { "$ref": "#/$defs/artifactId" },
+        "start_byte": { "type": "integer", "minimum": 0 },
+        "end_byte": { "type": "integer", "minimum": 0 },
+        "label": { "type": "string", "maxLength": 500 },
+        "raw_destination": { "type": "string", "maxLength": 4000 },
+        "resolved_destination": { "type": ["string", "null"] },
+        "source_depth": { "type": "integer", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "acquisition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["acquisition_id", "role", "requested_locator", "final_locator", "depth", "status", "content_state", "raw_artifact_id", "readable_artifact_id", "transformation", "parent_acquisition_id", "originating_link", "http_status", "failure", "authority", "selected_excerpt_ids"],
+      "properties": {
+        "acquisition_id": { "$ref": "#/$defs/acquisitionId" },
+        "role": { "enum": ["collection_listing", "listed_page", "evidence_page"] },
+        "requested_locator": { "type": "string", "minLength": 1 },
+        "final_locator": { "type": "string", "minLength": 1 },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "status": { "enum": ["acquired", "blocked", "failed"] },
+        "content_state": { "enum": ["resolved", "inspected", "content_incomplete", "blocked"] },
+        "raw_artifact_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/artifactId" }] },
+        "readable_artifact_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/artifactId" }] },
+        "transformation": { "type": ["string", "null"] },
+        "parent_acquisition_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/acquisitionId" }] },
+        "originating_link": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/link" }] },
+        "http_status": { "type": ["integer", "null"], "minimum": 100, "maximum": 599 },
+        "failure": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/failure" }] },
+        "authority": { "$ref": "#/$defs/authority" },
+        "selected_excerpt_ids": { "type": "array", "items": { "$ref": "#/$defs/excerptId" }, "uniqueItems": true }
+      }
+    },
+    "excerpt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["excerpt_id", "artifact_id", "start_byte", "end_byte", "text", "role"],
+      "properties": {
+        "excerpt_id": { "$ref": "#/$defs/excerptId" },
+        "artifact_id": { "$ref": "#/$defs/artifactId" },
+        "start_byte": { "type": "integer", "minimum": 0 },
+        "end_byte": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "role": { "enum": ["collection_listing", "research_evidence", "authority_signal"] }
+      }
+    },
+    "parsedPrimitive": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "source_text", "value", "unit_text", "currency", "cadence", "date_text", "boolean_value", "audience_text"],
+      "properties": {
+        "kind": { "enum": ["quantity", "money", "cadence", "date", "boolean_requirement", "audience"] },
+        "source_text": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "value": { "type": ["number", "null"] },
+        "unit_text": { "type": ["string", "null"], "maxLength": 200 },
+        "currency": { "type": ["string", "null"], "maxLength": 20 },
+        "cadence": { "type": ["string", "null"], "maxLength": 200 },
+        "date_text": { "type": ["string", "null"], "maxLength": 200 },
+        "boolean_value": { "type": ["boolean", "null"] },
+        "audience_text": { "type": ["string", "null"], "maxLength": 300 }
+      }
+    },
+    "finding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["finding_id", "topic", "statement", "derivation", "evidence_excerpt_ids", "acquisition_ids", "parsed_values"],
+      "properties": {
+        "finding_id": { "$ref": "#/$defs/findingId" },
+        "topic": { "$ref": "#/$defs/topic" },
+        "statement": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "derivation": { "enum": ["explicit", "parsed", "inferred"] },
+        "evidence_excerpt_ids": { "type": "array", "items": { "$ref": "#/$defs/excerptId" }, "minItems": 1, "uniqueItems": true },
+        "acquisition_ids": { "type": "array", "items": { "$ref": "#/$defs/acquisitionId" }, "minItems": 1, "uniqueItems": true },
+        "parsed_values": { "type": "array", "items": { "$ref": "#/$defs/parsedPrimitive" } }
+      }
+    },
+    "conflict": {
+      "type": "object", "additionalProperties": false,
+      "required": ["conflict_id", "topic", "finding_ids", "observation"],
+      "properties": {
+        "conflict_id": { "$ref": "#/$defs/conflictId" },
+        "topic": { "$ref": "#/$defs/topic" },
+        "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" }, "minItems": 2, "uniqueItems": true },
+        "observation": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "outcome": {
+      "type": "object", "additionalProperties": false,
+      "required": ["topic", "status", "finding_ids", "conflict_ids", "unresolved_questions"],
+      "properties": {
+        "topic": { "$ref": "#/$defs/topic" },
+        "status": { "enum": ["answered", "partially_answered", "not_found", "conflicting", "blocked"] },
+        "finding_ids": { "type": "array", "items": { "$ref": "#/$defs/findingId" }, "uniqueItems": true },
+        "conflict_ids": { "type": "array", "items": { "$ref": "#/$defs/conflictId" }, "uniqueItems": true },
+        "unresolved_questions": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 }, "uniqueItems": true }
+      }
+    }
+  }
+}
