@@ -207,6 +207,10 @@ assert.ok(
   }).some((error) => error.includes("at least one capability facet")),
   "the retained live calibration candidate must fail need-first completeness",
 );
+const unknownFacetCandidate = structuredClone(fixture.candidate), facetTemplate = unknownFacetCandidate.product.facets[0];
+unknownFacetCandidate.product.facets = [{ ...facetTemplate, namespace: "capability", concept: "invented_capability" }];
+const unknownFacetNormalized = normalizeCandidateShape(unknownFacetCandidate, fixture.source_text, { dropOpportunitiesWithoutCapability: true, removeUnknownFacets: true });
+assert.equal(unknownFacetNormalized.candidate.product.facets.length, 0); assert.equal(unknownFacetNormalized.candidate.opportunities.length, 0); assert.ok(unknownFacetNormalized.actions.some((action) => action.includes("unknown controlled-vocabulary")));
 
 function responseForProvider(model) {
   return {

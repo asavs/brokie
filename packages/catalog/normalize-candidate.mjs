@@ -1,4 +1,6 @@
-import { hasExplicitDurationEvidence } from "./validate-candidate.mjs";
+import { hasExplicitDurationEvidence, vocabulary } from "./validate-candidate.mjs";
+
+const vocabularyConcepts = new Map(Object.entries(vocabulary.facet_namespaces).map(([namespace, concepts]) => [namespace, new Set(concepts)]));
 
 function evidenceForText(evidenceSpans, text) {
   const normalized = String(text ?? "").trim();
@@ -82,6 +84,10 @@ export function normalizeCandidateShape(input, sourceText = "", options = {}) {
       .join(" ");
 
   if (candidate.product && typeof candidate.product === "object") {
+    if (options.removeUnknownFacets && Array.isArray(candidate.product.facets)) candidate.product.facets = candidate.product.facets.filter((facet, index) => {
+      if (vocabularyConcepts.get(facet.namespace)?.has(facet.concept)) return true;
+      actions.push(`product.facets.${index}: removed unknown controlled-vocabulary concept`); return false;
+    });
     candidate.product.proposed_canonical_name = supportedText(
       candidate.product.proposed_canonical_name,
       evidenceSpans,
