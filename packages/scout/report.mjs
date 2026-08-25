@@ -18,7 +18,7 @@ export function generateDogfoodReport({ ledger, runId, stateRoot, outputPath, co
   const artifactStore = new ArtifactStore(stateRoot), packetStore = new PacketStore(stateRoot, createPacketValidator(artifactStore));
   const packets = packetRows.map((row) => ({ row, packet: packetStore.read(row.packet_id) }));
   const events = ledger.db.prepare("SELECT event_type, normalized_json FROM scout_events WHERE run_id=? ORDER BY sequence").all(runId).map((row) => ({ type: row.event_type, value: JSON.parse(row.normalized_json) }));
-  const attempts = ledger.db.prepare("SELECT requested_model,resolved_model,status FROM scout_attempts WHERE run_id=? ORDER BY attempt_number").all(runId);
+  const attempts = ledger.db.prepare("SELECT requested_model,resolved_model,status,action_json FROM scout_attempts WHERE run_id=? ORDER BY attempt_number").all(runId);
   const seed = json(run.seed_json, {}), configured = json(run.budget_json, {}), consumed = json(run.counters_json, {});
   const files = [...new Set(events.filter((e) => e.type === "tool" && e.value.name === "file.read").map((e) => safeReportText(e.value.input.relative_path)))];
   const gitInspection = events.find((e) => e.type === "tool" && e.value.name === "git.inspect")?.value.output;
@@ -27,6 +27,15 @@ export function generateDogfoodReport({ ledger, runId, stateRoot, outputPath, co
   const uncertainties = [...new Set(packets.flatMap(({ packet }) => [...packet.uncertainties.map((u) => safeReportText(u.observation)), ...packet.investigation.unresolved_questions.map((x) => safeReportText(x))]))];
   const resolved = [...new Set(attempts.map((x) => x.resolved_model).filter(Boolean).map((x) => safeReportText(x)))];
   const terminalReasons = json(run.terminal_reason_codes_json, []);
+  const explicitlyFinalized = attempts.some((attempt) => json(attempt.action_json, {}).type === "finalize");
+  const elapsedMs = new Date(run.finished_at).getTime() - new Date(run.started_at).getTime();
+  const unknowns = uncertainties.length
+    ? uncertainties.map((x) => `- ${x}`).join("\n")
+    : packets.length && !explicitlyFinalized
+      ? "- The model did not issue an explicit `finalize` action before orchestration stopped; the harness finalized the validated selected-listing state."
+      : !packets.length && terminalReasons.length
+        ? `- The run ended before packets were emitted: ${terminalReasons.map((x) => `\`${x}\``).join(", ")}.`
+        : "- No acquisition uncertainty was recorded.";
   const runText = Object.fromEntries(["run_id", "started_at", "finished_at", "provider", "requested_model", "status"].map((key) => [key, safeReportText(run[key])]));
   const seedLocator = safeReportText(seed.locator), revision = safeReportText(packets[0]?.packet.seed.revision ?? gitInspection?.revision ?? "n/a");
   const rows = packets.map(({ row, packet }) => `| ${row.ordinal} | ${safeReportText(packet.subject.source_label, 256)} | ${safeReportText(packet.subject.selection_reason, 500)} | \`${safeReportText(packet.packet_id)}\` | ${safeReportText(packet.investigation.status)} | ${safeReportText(row.storage_status)} |`).join("\n");
@@ -54,9 +63,11 @@ Generated from the persistent Scout ledger and its referenced immutable packets.
 | HTTP requests | ${configured.max_requests} | ${consumed.requests ?? 0} |
 | Content pages | ${configured.max_pages} | ${consumed.pages ?? 0} |
 | Accepted raw bytes | ${configured.max_bytes} | ${consumed.bytes ?? 0} |
-| Elapsed milliseconds | ${configured.max_elapsed_ms} | ${new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()} |
+| Elapsed run milliseconds | ${configured.max_elapsed_ms} | ${elapsedMs} |
 | Inference calls | ${configured.max_inference_calls} | ${consumed.inference_calls ?? 0} |
 | Acquisition depth | ${configured.max_depth} | ${consumed.max_depth ?? 0} |
+
+The elapsed deadline governs model and tool work. The consumed wall time includes harness-owned packet finalization after an in-flight call is aborted at that deadline.
 
 ## Catalog boundary
 
@@ -84,7 +95,7 @@ ${followed.filter((x) => x.failure !== "none").length || terminalReasons.length 
 
 ## What Scout could not determine
 
-${uncertainties.length ? uncertainties.map((x) => `- ${x}`).join("\n") : terminalReasons.length ? `- The run ended before packets were emitted: ${terminalReasons.map((x) => `\`${x}\``).join(", ")}.` : "- No acquisition uncertainty was recorded."}
+${unknowns}
 - Scout intentionally did not determine catalog identity, entitlements, eligibility, capabilities, verification, or publication state.
 
 ## Reproduce

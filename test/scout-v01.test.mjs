@@ -220,6 +220,15 @@ assert.equal(webRun.packets.length, 1); assert.equal(webRun.packets[0].packet.li
 assert.deepEqual(webRun.packets[0].packet.provenance.source_timestamps, []);
 assert.deepEqual(webRun.packets[0].packet.provenance.tools_used.map((tool) => tool.name), ["http.fetch", "markdown.inspect", "link.inspect"]); webLedger.close();
 
+const noFinalizeState = scoutState("no-explicit-finalize"), noFinalizeProvider = new ScriptedProvider([
+  (context) => { const seedPage = context.observations.find((item) => item.type === "web_seed"), boundary = seedPage.listing_candidates[0]; return { type: "select_listings", listings: [{ artifact_id: seedPage.artifact_id, ...boundary, selection_reason: "HTML list boundary", primary_link_index: 0 }] }; },
+  { type: "investigate_link", listing_index: 0, link_index: 0 },
+]);
+const noFinalizeRun = await runScoutV01({ seed: { kind: "web", locator: "https://catalog.example/resources" }, provider: noFinalizeProvider, artifactStore: noFinalizeState.artifacts, packetStore: noFinalizeState.packets, ledger: noFinalizeState.scoutLedger, budgets: { ...budgets, max_inference_calls: 3 }, target_packet_count: 1, transport: webTransport, lookup });
+assert.equal(noFinalizeRun.status, "partial"); assert.equal(noFinalizeRun.packets[0].packet.investigation.status, "complete");
+const noFinalizeReportPath = path.join(temp, "no-finalize-report.md"); generateDogfoodReport({ ledger: noFinalizeState.scoutLedger, runId: noFinalizeRun.run_id, stateRoot: noFinalizeState.root, outputPath: noFinalizeReportPath, command: "npm run scout:v01" });
+const noFinalizeReport = fs.readFileSync(noFinalizeReportPath, "utf8"); assert.match(noFinalizeReport, /did not issue an explicit `finalize` action/); assert.doesNotMatch(noFinalizeReport, /ended before packets were emitted/); noFinalizeState.scoutLedger.close();
+
 const largeState = scoutState("large-context"), largeProvider = new ScriptedProvider([
   { type: "list_files", cursor: 0 }, { type: "read_markdown", path: "LARGE.md" },
   (context) => {

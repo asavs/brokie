@@ -285,7 +285,9 @@ export async function runScoutV01({ seed, provider, artifactStore, packetStore, 
     packet.packet_id = packetId(packet); const stored = packetStore.put(packet); ordinal += 1; ledger.packet(runId, ordinal, packet.packet_id, stored.status, investigationStatus); packets.push({ packet, storage_status: stored.status });
   }} catch (error) { const code = error.code ?? "other"; ledger.finish(runId, "failed", budget, [...terminalReasons, code], unresolved); return { run_id: runId, status: "failed", packets, budget: budget.snapshot(), error: code }; }
   const statuses = packets.map(({ packet }) => packet.investigation.status);
-  const runStatus = statuses.every((x) => x === "complete") ? "completed" : statuses.some((x) => x !== "blocked") ? "partial" : "blocked";
+  const runStatus = !finalized
+    ? statuses.some((x) => x !== "blocked") ? "partial" : "blocked"
+    : statuses.every((x) => x === "complete") ? "completed" : statuses.some((x) => x !== "blocked") ? "partial" : "blocked";
   ledger.finish(runId, runStatus, budget, terminalReasons, unresolved);
   return { run_id: runId, status: runStatus, packets, budget: budget.snapshot() };
 }
