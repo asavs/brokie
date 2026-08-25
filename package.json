@@ -1,6 +1,6 @@
 {
   "name": "brokie",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Find free and discounted resources by what you need to accomplish.",
@@ -11,10 +11,12 @@
     "test:store": "node test/catalog-store.test.mjs",
     "test:ingest": "node test/catalog-ingest.test.mjs",
     "test:librarian": "node test/librarian-v01.test.mjs",
+    "test:api": "node test/api-typed.test.mjs",
     "test:v001": "npm run build:fixture && npm run build:explorer && node packages/librarian/test.mjs",
     "test:v010": "node test/v010.test.mjs",
-    "test": "npm run test:contract && npm run test:store && npm run test:ingest && npm run test:librarian && npm run test:v001 && npm run test:v010",
+    "test": "npm run test:contract && npm run test:store && npm run test:ingest && npm run test:librarian && npm run test:api && npm run test:v001 && npm run test:v010",
     "librarian:v01": "node packages/librarian/run-v0.1.mjs",
+    "review:v01": "node packages/maintainer/review-v0.1.mjs",
     "serve": "node apps/api/server.mjs",
     "refresh:fixture": "node packages/maintainer/job.mjs test/fixtures/free-for-dev.md test/fixtures/startup-offers.csv",
     "promote": "node packages/maintainer/promote.mjs"
@@ -23,7 +25,9 @@
     "node": ">=22.5"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "0.84.2",
-    "ajv": "^8.17.1"
+    "ajv": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "@earendil-works/pi-coding-agent": "0.84.2"
   }
 }

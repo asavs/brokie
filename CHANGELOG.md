@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.1.1 — 2026-08-24
+
+- Connected librarian revision review to immutable `trust`, `reject`, and `request_revision` catalog events with recoverable, idempotent decisions.
+- Served the typed catalog's trusted publication projection through the read-only HTTP API and web explorer while retaining the v0.0.1 compatibility fallback.
+- Added published capability search, coverage reporting, scoped evidence retrieval, and an OpenAPI 3.1 contract.
+- Added bounded query validation, URI and header limits, request timeouts, and typed API regression fixtures.
+- Made the Pi coding-agent comparison optional so core installations require only the deterministic schema validator.
+- Updated AJV to 8.18.0 and resolved the dependency audit finding.
+- Recorded the Firecrawl-guided agent-access direction and the v0.1.x runtime decision.
+
+This patch completes and hardens the existing v0.1 typed-librarian release shape; it does not add Planner, MCP, remote CLI, or autonomous publication behavior.
+
 ## 0.1.0 — 2026-08-24
 
 - Versioned typed candidate contract, controlled vocabulary, and immutable SQLite revision store.

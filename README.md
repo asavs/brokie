@@ -2,16 +2,16 @@
 
 Find free and discounted resources by **what you need to accomplish**, rather than by the company providing them.
 
-Brokie is an experiment in building an autonomous, provenance-conscious index of free tiers, credits, grants, and useful services. Version 0.1.0 introduces the typed librarian pipeline: models propose classifications, while deterministic code owns evidence integrity, normalization, stable identity, immutable history, and review routing.
+Brokie is an experiment in building an autonomous, provenance-conscious index of free tiers, credits, grants, and useful services. Version 0.1.0 introduced the typed librarian pipeline; version 0.1.1 connects it through review, trusted publication, the read API, and the explorer. Models propose classifications, while deterministic code owns evidence integrity, normalization, stable identity, immutable history, and review routing.
 
-## What 0.1.0 includes
+## What 0.1.1 includes
 
 - Markdown and CSV ingestion with stable source IDs and line/row provenance
 - A versioned JSON contract, controlled vocabulary, and immutable SQLite revision store
 - Need-first capabilities with typed savings, limits, requirements, and uncertainty
 - Free OpenRouter and NVIDIA librarian adapters with one bounded repair attempt
 - Exact evidence validation, deterministic normalization, and inspectable run traces
-- A local search API, static explorer, refresh snapshots, and persistent review queues
+- A typed read-only search API with OpenAPI, static explorer, refresh snapshots, and persistent review queues
 - Lock-protected unattended Linux jobs and systemd templates
 
 This release classifies supplied descriptions. It does not independently guarantee that an offer is current, available in a region, or compatible with another offer.
@@ -31,6 +31,7 @@ npm test
 ```
 
 The test uses synthetic fixtures and does not need credentials or private source data.
+For a core deployment without the optional Pi comparison adapter, use `npm ci --omit=optional`.
 
 ## Build an index
 
@@ -49,15 +50,35 @@ npm run librarian:v01 -- --record=/path/to/normalized-record.json --provider=ope
 
 The runner reads the selected provider's environment key, refuses paid OpenRouter routes, and never falls back to one. See the [v0.1 librarian guide](docs/LIBRARIAN-V0.1.md) for NVIDIA usage, source-ID selection, state paths, and the bounded review workflow.
 
+Review a generated revision and publish its immutable trust events:
+
+```bash
+npm run review:v01 -- list
+npm run review:v01 -- decide REVIEW_ID accepted --note="Evidence verified" --reviewer=YOUR_ID
+```
+
+Then serve the trusted typed projection and its OpenAPI contract:
+
+```bash
+npm run serve
+# http://127.0.0.1:8787/openapi.json
+```
+
+The server selects `var/v0.1/catalog-v0.1.sqlite` when present and otherwise retains the v0.0.1 fixture fallback.
+
 ## Project status
 
-Version 0.1.0 is the local-first typed librarian proof of concept. Hermes and NemoClaw remain candidates for a later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
+Version 0.1.1 is the local-first typed librarian proof of concept. Hermes and NemoClaw remain candidates for a later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
 
 The v0.1 catalog architecture is specified by the [typed data contract](docs/DATA-CONTRACT.md), its [Draft 2020-12 candidate schema](schemas/catalog-candidate.schema.json), a [versioned controlled vocabulary](schemas/vocabularies.v0.1.json), and an immutable [SQLite revision store](packages/catalog/schema.v0.1.sql). Librarian output is only a proposal: deterministic validation owns evidence integrity, scoped references, duplicate economics, indexing, and publication.
 
 The provider-neutral [v0.1 librarian runner](docs/LIBRARIAN-V0.1.md) adds bounded model classification, one repair attempt, deterministic normalization, stable identity planning, inspectable traces, and mandatory review routing. It supports the OpenRouter free-model router and explicitly selected NVIDIA NIM endpoints without paid fallback.
 
 See [the product brief](docs/PRODUCT_BRIEF.md) and [v0.0.1 experiment report](docs/V0.0.1-EXPERIMENT.md).
+
+The [runtime decision](docs/ADR-001-RUNTIME.md) retains Node for v0.1.x while keeping the durable boundaries portable and recording concrete triggers for reconsideration.
+
+The working [agent-access and Firecrawl implementation study](docs/AGENT-ACCESS.md) records the skill-led, API-first distribution direction, emerging build and inspiration request modes, transferable implementation lessons, and safeguards for future HTTP, CLI, MCP, and skill work.
 
 For current Linux commands and the eventual service shape, see [WSL development](docs/WSL-DEVELOPMENT.md).
 
