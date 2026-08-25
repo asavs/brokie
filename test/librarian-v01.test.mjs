@@ -234,6 +234,19 @@ await nvidiaProvider.complete([{ role: "user", content: "fixture" }]);
 assert.equal(nvidiaRequest.response_format, undefined);
 assert.equal(nvidiaRequest.chat_template_kwargs.enable_thinking, false);
 
+let ultraRequest;
+const ultraProvider = createCompatibleProvider({
+  provider: "nvidia",
+  model: "nvidia/nemotron-3-ultra-550b-a55b",
+  apiKey: "fixture-key",
+  fetchImpl: async (_url, request) => {
+    ultraRequest = JSON.parse(request.body);
+    return responseForProvider("nvidia/nemotron-3-ultra-550b-a55b");
+  },
+});
+await ultraProvider.complete([{ role: "user", content: "fixture" }]);
+assert.equal(ultraRequest.chat_template_kwargs.enable_thinking, false);
+
 let openRouterRequest;
 const openRouterProvider = createCompatibleProvider({
   provider: "openrouter",

@@ -32,7 +32,7 @@ export function createCompatibleProvider({
   const nvidiaReasoningOptions =
     provider !== "nvidia"
       ? {}
-      : model.includes("nemotron-3-nano")
+      : model.includes("nemotron-3-nano") || model.includes("nemotron-3-ultra")
         ? { chat_template_kwargs: { enable_thinking: false } }
         : model.includes("deepseek-v4")
           ? { chat_template_kwargs: { thinking: false } }
