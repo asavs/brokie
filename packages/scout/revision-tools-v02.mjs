@@ -51,4 +51,3 @@ export function createGitRevisionTools({ repository, artifactStore, budget, ledg
     },
   };
 }
-

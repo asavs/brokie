@@ -41,4 +41,3 @@ Scout may preserve that a source states “2 Database Models” and parse the pr
 ScoutPacket v0.1 remains immutable and supported. The correction introduces a versioned v0.2 research packet and runner with explicit research requests and outcomes, bounded readable derived artifacts, selected evidence, one optional second-hop navigation, revision-faithful Git reads, subject-local evidence identity, and a structured transitional Librarian handoff.
 
 Full-source fan-out is paused. Until the same five listings demonstrate materially different truthful outcomes and produce reviewable live Librarian candidates, multiplying v0.1 acquisition packets would scale transport success rather than knowledge quality.
-

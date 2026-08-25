@@ -15,4 +15,3 @@ export function createResearchRequest(objective = DEFAULT_RESEARCH_OBJECTIVE, to
   request.request_id = contentId("research", { request_version: request.request_version, objective: request.objective, topics: request.topics });
   return request;
 }
-
