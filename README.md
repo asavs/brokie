@@ -2,26 +2,26 @@
 
 Find free and discounted resources by **what you need to accomplish**, rather than by the company providing them.
 
-Brokie is an experiment in building an autonomous, provenance-conscious index of free tiers, credits, grants, and useful services. Version 0.1.0 introduced the typed librarian pipeline; version 0.1.1 connects it through review, trusted publication, the read API, and the explorer. Models propose classifications, while deterministic code owns evidence integrity, normalization, stable identity, immutable history, and review routing.
+Brokie is an experiment in building an autonomous, provenance-conscious index of free tiers, credits, grants, and useful services. Version 0.1.0 introduced the typed Librarian pipeline, 0.1.1 connected its trusted publication path, and 0.2.0 adds a simple repository-to-Scout-packet queue for the Librarian. Models propose classifications, while deterministic code owns evidence integrity, normalization, stable identity, immutable history, and review routing.
 
-## What 0.1.1 includes
+## What 0.2.0 includes
 
-- Markdown and CSV ingestion with stable source IDs and line/row provenance
-- A versioned JSON contract, controlled vocabulary, and immutable SQLite revision store
-- Need-first capabilities with typed savings, limits, requirements, and uncertainty
-- Free OpenRouter and NVIDIA librarian adapters with one bounded repair attempt
-- Exact evidence validation, deterministic normalization, and inspectable run traces
-- A typed read-only search API with OpenAPI, static explorer, refresh snapshots, and persistent review queues
-- Lock-protected unattended Linux jobs and systemd templates
+- Read-only ingestion from a local or remote Git repository at an exact revision
+- Deterministic discovery of a bounded Markdown or HTML collection
+- One immutable, provenance-preserving Scout packet per explicit linked listing
+- Idempotent fan-out into a resumable SQLite Librarian queue
+- A headless OMP Librarian worker with explicit free, quota, and opt-in paid route classes
+- The existing typed candidate, review, trusted publication, API, and explorer path from 0.1.x
+- Regression coverage for Scout v0.1 and the new acquisition-only Scout v0.2 contract
 
-This release classifies supplied descriptions. It does not independently guarantee that an offer is current, available in a region, or compatible with another offer.
+This release proves acquisition and queueing. It does not claim that every queued listing has been classified, independently verified as current, accepted by a reviewer, or published.
 
 ## Requirements
 
-- Node.js 22.5 or newer (`node:sqlite` is used)
-- A free-for-dev-style Markdown file
-- A startup-offers CSV
-- Optionally, an NVIDIA NIM or OpenRouter key for inference experiments
+- Node.js 22.13 or newer (`node:sqlite` is used)
+- A Git repository containing a Markdown or HTML collection
+- OMP on `PATH` for the v0.2 Librarian worker
+- An authenticated free or explicitly authorized quota route in OMP for inference
 
 ## Install and test
 
@@ -32,6 +32,15 @@ npm test
 
 The test uses synthetic fixtures and does not need credentials or private source data.
 For a core deployment without the optional Pi comparison adapter, use `npm ci --omit=optional`.
+
+## Queue a repository for the Librarian
+
+```bash
+npm run pipeline:ingest-v02 -- --seed=https://github.com/ripienaar/free-for-dev --state-dir=var/pipeline
+npm run pipeline:librarian-v02 -- --state-dir=var/pipeline --limit=5 --route-class=quota --model=PROVIDER/MODEL
+```
+
+The first command performs deterministic collection fan-out without asking a model to emit every listing. The second command processes a bounded queue batch through OMP. Paid routes are refused unless the command explicitly includes `--allow-paid`. See the [v0.2 pipeline guide](docs/V0.2-PIPELINE.md) for state layout and operational details.
 
 ## Build an index
 
@@ -68,7 +77,7 @@ The server selects `var/v0.1/catalog-v0.1.sqlite` when present and otherwise ret
 
 ## Project status
 
-Version 0.1.1 is the local-first typed librarian proof of concept. Hermes and NemoClaw remain candidates for a later autonomous maintenance supervisor, not replacements for the deterministic evidence pipeline.
+Version 0.2.0 is the first local repository-to-catalog pipeline milestone. A live read-only free-for-dev dogfood run produced 1,299 stable Scout packets and queued them idempotently. Bulk Librarian processing remains paused while its prompt size, repair frequency, and provider bake-off are improved. OMP is the current replaceable worker harness, not the owner of Brokie's evidence, queue, review, or publication policy.
 
 The v0.1 catalog architecture is specified by the [typed data contract](docs/DATA-CONTRACT.md), its [Draft 2020-12 candidate schema](schemas/catalog-candidate.schema.json), a [versioned controlled vocabulary](schemas/vocabularies.v0.1.json), and an immutable [SQLite revision store](packages/catalog/schema.v0.1.sql). Librarian output is only a proposal: deterministic validation owns evidence integrity, scoped references, duplicate economics, indexing, and publication.
 

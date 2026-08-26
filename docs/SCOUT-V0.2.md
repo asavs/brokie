@@ -1,6 +1,6 @@
 # Scout v0.2
 
-Status: active pre-release design
+Status: released in `0.2.0`
 
 ## Job
 

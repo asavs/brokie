@@ -2,9 +2,9 @@
 
 Status: authoritative living product direction
 
-Last reconciled: 2026-08-24
+Last reconciled: 2026-08-26
 
-Current release: `0.1.1`
+Current release: `0.2.0`
 
 This document exists so implementation details cannot quietly replace the product. It records the current long-term mission, role boundaries, trust model, and sequencing decisions. The product brief remains the detailed decision archive; this is the compact source of truth.
 
@@ -195,7 +195,7 @@ Initial subject scope excludes personalized legal, tax, investment, debt, insura
 - Do not build a distributed system merely because several free VMs are available; add isolation only when measurements justify it.
 - Before provisioning, verify current free-tier shapes, storage, egress, tenancy eligibility, and other assumptions against official provider terms.
 
-## Current state: release 0.1.1
+## Current state: release 0.2.0
 
 `0.1.0` proved the typed Librarian transaction. `0.1.1` hardens and connects its trusted publication path:
 
@@ -213,31 +213,45 @@ Initial subject scope excludes personalized legal, tax, investment, debt, insura
 - bounded API validation and typed regression fixtures;
 - a legacy source refresh worker and Linux service skeleton.
 
-It is not yet a continuous autonomous Librarian or an end-user savings product.
+`0.2.0` adds the first deliberately simple Scout-to-Librarian acquisition path:
 
-The trusted typed read path is now connected. The principal remaining integration debt is that source acquisition and refresh still use the legacy path:
+- a versioned acquisition-only Scout packet that contains source material rather than Scout interpretation;
+- read-only local and remote Git acquisition tied to an exact recorded revision;
+- deterministic selection of the strongest bounded Markdown or HTML collection;
+- deterministic fan-out to one immutable collection-only packet per explicit HTTP-linked listing;
+- a resumable, idempotent SQLite Librarian queue connected to the existing shared typed catalog;
+- a replaceable headless OMP worker boundary with explicit `free`, `quota`, and command-authorized `paid` route classes;
+- a live read-only free-for-dev dogfood run that produced 1,299 stable queued packets from one repository seed.
+
+ScoutPacket v0.1 remains supported. The unreleased research-heavy v0.2 design was superseded rather than silently changing the v0.1 contract.
+
+It is not yet a continuous autonomous Librarian or an end-user savings product. The live run proved acquisition and queueing, not bulk classification quality, offer verification, or publication.
+
+The trusted typed read path and the new acquisition queue are both connected. The principal remaining integration debt is efficient Librarian convergence from queued Scout packets into reviewed typed revisions:
 
 ```text
-legacy deterministic importer -> legacy snapshots and refresh
-single-record typed Librarian  -> typed review/trust -> typed API and explorer
+Git seed -> Scout packets -> durable Librarian queue -> candidate/review
+                                             |             |
+                                             +-- not yet bulk-converged
+
+accepted typed revisions -> trusted API and explorer
 ```
 
-The Scout-to-Librarian loop must replace the legacy acquisition boundary while preserving the working trusted publication projection.
+The first live OMP-backed Librarian result was structurally truthful but expensive in prompt tokens and required a repair call. Bulk processing is intentionally paused until that boundary is simpler and more reliable.
 
-## Next milestone: Scout-to-Librarian loop
+## Next milestone: Librarian convergence
 
-The next implementation milestone should resist broad platform work and establish the smallest real information-acquisition loop:
+The next implementation milestone should keep Scout simple and make the Librarian reliably consume a useful bounded set:
 
-1. Define and validate `ScoutPacket` and Scout run contracts.
-2. Give a bounded Scout generic repository, file, Markdown, CSV, JSON, HTTP, and browser acquisition tools.
-3. Dogfood five representative free-for-dev listings and review every packet.
-4. Fan out the free-for-dev repository into inexpensive discovered packets without hardcoding free-for-dev into the Scout core.
-5. Dogfood the private startup-offers CSV as a structurally different collection while preserving its reported lineage.
-6. Let the existing Librarian consume packets, deduplicate subjects, and create typed candidate revisions.
-7. Support typed Librarian requests for additional source acquisition.
-8. Make acquisition and ingestion repeatable, resumable, idempotent, budgeted, and change-aware.
-9. Complete refresh convergence on accepted typed revisions while preserving the typed API and explorer introduced in `0.1.1`.
-10. Deploy the closed local loop to one Oracle VM for an unattended soak before adding public autonomy.
+1. Reduce the Librarian packet prompt and response burden while preserving typed deterministic validation.
+2. Exercise several free and explicitly authorized quota routes through OMP; record provider failures as inspectable failures, stubs, or TODOs rather than complicating Scout.
+3. Process and adversarially review a small representative packet batch before spending quota on the full queue.
+4. Resume all 1,299 queued free-for-dev packets only after the bounded batch meets quality and retry expectations.
+5. Add supplemental Scout acquisition only when the Librarian can state what source material is missing.
+6. Keep candidate acceptance and publication behind the existing review/trust boundary.
+7. Make Git source refresh change-aware and converge accepted typed revisions without discarding immutable history.
+8. Dogfood the private startup-offers CSV as a structurally different collection while preserving its reported lineage.
+9. Deploy the closed local loop to one Oracle VM for an unattended soak before adding public autonomy.
 
 The Scout may explore unfamiliar sources and compile successful acquisition paths into replayable plans. Those plans are versioned run artifacts, not source-specific behavior embedded in the core architecture. Bulk work should replay deterministically until validation indicates that the source changed enough to require the Scout again.
 
