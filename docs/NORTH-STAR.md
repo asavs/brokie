@@ -33,7 +33,7 @@ The first audience is founders and developers. The first flagship outcome is lau
 ## Long-term autonomous loop
 
 ```text
-Scout discovers and investigates useful sources
+Scout discovers and acquires useful source material
   -> evidence packets enter the Librarian
   -> the Librarian maintains typed catalog knowledge
   -> the Planner assembles credible savings plans
@@ -50,17 +50,15 @@ Scout discovers and investigates useful sources
 
 ### Scout
 
-Purpose: investigate sources and return faithful evidence packets.
+Purpose: go looking for useful source material and bring back what it found.
 
 The Scout:
 
-- accepts a discovered seed such as a repository, webpage, post, document, or collection;
-- investigates relevant pages and files under request, time, storage, and inference budgets;
-- preserves source artifacts, redirects, timestamps, hashes, exact excerpts, and provenance chains;
-- distinguishes likely primary sources, secondary sources, aggregators, and unresolved authority;
-- reports stated claims, conflicts, unknowns, acquisition failures, and pages inspected;
-- follows targeted requests from the Librarian for missing evidence;
-- never resolves canonical catalog identity, assigns need-first ontology, or publishes facts.
+- accepts a seed such as a repository, webpage, post, document, or collection;
+- uses bounded file, HTTP, or browser tools to look for material about free things;
+- preserves what it acquired, where it came from, and what it could not access;
+- may choose which supplied link to open next, but does not interpret the source;
+- never extracts catalog facts, judges authority, reconciles conflicts, resolves identity, assigns ontology, or publishes.
 
 The Scout's handoff is an immutable, versioned `ScoutPacket`, not a catalog record.
 
@@ -71,6 +69,7 @@ Purpose: turn Scout packets into maintained catalog knowledge.
 The Librarian:
 
 - consumes one or more packets about a suspected subject;
+- inspects the acquired material, selects exact evidence, and judges source relationships;
 - resolves or defers canonical product identity and deduplicates across sources;
 - separates products from opportunities and splits one listing into zero or more typed opportunities;
 - models benefits, limits, requirements, applicability, eligibility, links, time, and ambiguity;
@@ -118,20 +117,18 @@ one collection listing
 A packet should preserve:
 
 - discovery source, collection version, locator, and raw listing;
-- subject hints and discovered URLs without asserting canonical identity;
-- fetched artifacts, final URLs, HTTP or Git metadata, timestamps, and hashes;
-- exact evidence excerpts and the artifact containing each excerpt;
-- faithful observations of stated pricing, allowances, eligibility, limits, dates, and requirements;
-- authority classification and provenance lineage;
-- conflicts, unresolved questions, blocked pages, and acquisition errors;
-- acquisition depth, tools used, model route, budget consumption, and trace identifier.
+- a source label and discovered URL without asserting canonical identity;
+- fetched raw artifacts and deterministic readable representations;
+- final URLs, redirects, HTTP or Git metadata, timestamps, hashes, and acquisition failures.
+
+Operational model routes, budgets, and traces belong in the linked Scout run ledger rather than in the evidence identity. Findings, evidence selection, authority, conflicts, and unanswered catalog questions belong to the Librarian.
 
 Packet acquisition depth is explicit:
 
 - `discovered`: the collection listing or mention is preserved;
 - `resolved`: the listed target was fetched and redirects were resolved;
-- `investigated`: likely official pricing, documentation, terms, or eligibility sources were inspected;
-- `blocked`: deeper investigation could not be completed.
+- `followed`: the Scout opened one additional supplied link;
+- `blocked`: acquisition could not continue.
 
 The complete collection may be represented by inexpensive discovered packets while only prioritized packets receive deeper investigation.
 
@@ -185,8 +182,12 @@ Initial subject scope excludes personalized legal, tax, investment, debt, insura
 - Every external service receives an explicit request, token, storage, and spend budget.
 - Never silently fall back to paid inference.
 - Prefer provider-neutral free remote inference, including OpenRouter free routing and compatible NVIDIA NIM endpoints.
+- A configured Gemini key may be used only when the operator explicitly authorizes that paid provider for the command; key presence alone is not permission to spend.
 - Record requested and resolved provider/model identity for every run.
 - Local quantized models are optional fallbacks or experiments, not foundational dependencies.
+- OMP is the initial bounded worker harness. It owns model authentication, provider
+  mechanics, retries, quotas, and sessions; Brokie retains typed tools, route permission,
+  budgets, durable state, and publication policy. The boundary remains replaceable.
 - Develop and evaluate locally before assigning autonomous external actions.
 - Preferred deployment target: one Oracle Cloud VM provisioned through the Oracle CLI.
 - Fallback deployment target: Google Cloud through the Google Cloud CLI.
@@ -228,17 +229,17 @@ The Scout-to-Librarian loop must replace the legacy acquisition boundary while p
 The next implementation milestone should resist broad platform work and establish the smallest real information-acquisition loop:
 
 1. Define and validate `ScoutPacket` and Scout run contracts.
-2. Give a bounded Scout generic repository, file, Markdown, CSV, JSON, HTTP, and browser investigation tools.
+2. Give a bounded Scout generic repository, file, Markdown, CSV, JSON, HTTP, and browser acquisition tools.
 3. Dogfood five representative free-for-dev listings and review every packet.
 4. Fan out the free-for-dev repository into inexpensive discovered packets without hardcoding free-for-dev into the Scout core.
 5. Dogfood the private startup-offers CSV as a structurally different collection while preserving its reported lineage.
 6. Let the existing Librarian consume packets, deduplicate subjects, and create typed candidate revisions.
-7. Support typed Librarian requests for supplemental Scout investigation.
+7. Support typed Librarian requests for additional source acquisition.
 8. Make acquisition and ingestion repeatable, resumable, idempotent, budgeted, and change-aware.
 9. Complete refresh convergence on accepted typed revisions while preserving the typed API and explorer introduced in `0.1.1`.
 10. Deploy the closed local loop to one Oracle VM for an unattended soak before adding public autonomy.
 
-The Scout should explore unfamiliar sources and may compile successful approaches into replayable plans. Those plans are versioned run artifacts, not source-specific behavior embedded in the core architecture. Bulk work should replay deterministically until validation indicates that the source changed enough to require the Scout again.
+The Scout may explore unfamiliar sources and compile successful acquisition paths into replayable plans. Those plans are versioned run artifacts, not source-specific behavior embedded in the core architecture. Bulk work should replay deterministically until validation indicates that the source changed enough to require the Scout again.
 
 ## Later horizons
 
@@ -271,7 +272,7 @@ The project is progressing toward the north star when:
 ## Unresolved strategic details
 
 - Exact source URLs and redistribution constraints for Bags.fm and the Om Patel post.
-- The first Scout supervisor harness and model bake-off.
+- Model and provider bake-offs within the initial OMP worker boundary.
 - Packet completeness thresholds for different source and opportunity shapes.
 - How much official-source investigation is required before initial publication.
 - The first public channel and its staged autonomy evaluation.

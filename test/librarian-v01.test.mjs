@@ -173,6 +173,10 @@ assert.throws(
     }),
   /refusing non-free OpenRouter model/,
 );
+assert.throws(
+  () => createCompatibleProvider({ provider: "gemini", model: "gemini-fixture", apiKey: "fixture-key" }),
+  /explicit authorization/,
+);
 
 const calibration = JSON.parse(
   fs.readFileSync(
@@ -208,7 +212,7 @@ assert.ok(
   "the retained live calibration candidate must fail need-first completeness",
 );
 const unknownFacetCandidate = structuredClone(fixture.candidate), facetTemplate = unknownFacetCandidate.product.facets[0];
-unknownFacetCandidate.product.facets = [{ ...facetTemplate, namespace: "capability", concept: "invented_capability" }];
+unknownFacetCandidate.product.facets = [{ ...facetTemplate, namespace: "capability", concept_id: "invented_capability" }];
 const unknownFacetNormalized = normalizeCandidateShape(unknownFacetCandidate, fixture.source_text, { dropOpportunitiesWithoutCapability: true, removeUnknownFacets: true });
 assert.equal(unknownFacetNormalized.candidate.product.facets.length, 0); assert.equal(unknownFacetNormalized.candidate.opportunities.length, 0); assert.ok(unknownFacetNormalized.actions.some((action) => action.includes("unknown controlled-vocabulary")));
 
@@ -265,6 +269,20 @@ const openRouterProvider = createCompatibleProvider({
 });
 await openRouterProvider.complete([{ role: "user", content: "fixture" }]);
 assert.deepEqual(openRouterRequest.response_format, { type: "json_object" });
+
+let geminiUrl;
+const geminiProvider = createCompatibleProvider({
+  provider: "gemini",
+  model: "gemini-fixture",
+  apiKey: "fixture-key",
+  allowPaid: true,
+  fetchImpl: async (url) => {
+    geminiUrl = url;
+    return responseForProvider("gemini-fixture");
+  },
+});
+await geminiProvider.complete([{ role: "user", content: "fixture" }]);
+assert.equal(geminiUrl, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
 
 const rejectedReview = recordRevisionReviewDecision(state, first.review_id, {
   decision: "rejected",

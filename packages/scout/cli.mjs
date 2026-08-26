@@ -14,7 +14,7 @@ if (!locator) throw new Error("--seed=<local-git-path-or-static-url> is required
 const root = path.resolve(import.meta.dirname, "../.."), stateRoot = path.resolve(option("state-dir", path.join(root, "var", "scout-v0.1")));
 fs.mkdirSync(stateRoot, { recursive: true }); const artifactStore = new ArtifactStore(stateRoot), ledger = new ScoutLedger(path.join(stateRoot, "scout-ledger.sqlite"));
 const packetStore = new PacketStore(stateRoot, createPacketValidator(artifactStore)); const key = providerEnvironmentKey(providerName);
-const provider = createCompatibleProvider({ provider: providerName, model, apiKey: process.env[key], timeoutMs: Number(option("timeout-ms", "120000")), maxTokens: Number(option("max-tokens", "2600")) });
+const provider = createCompatibleProvider({ provider: providerName, model, apiKey: process.env[key], timeoutMs: Number(option("timeout-ms", "120000")), maxTokens: Number(option("max-tokens", "2600")), allowPaid: option("allow-paid-provider", "") === providerName });
 const budgets = { max_requests: Number(option("max-requests", "20")), max_pages: Number(option("max-pages", "15")), max_bytes: Number(option("max-bytes", "3000000")), max_elapsed_ms: Number(option("max-elapsed-ms", "180000")), max_inference_calls: Number(option("max-inference-calls", "16")), max_depth: Number(option("max-depth", "1")) };
 try {
   const result = await runScoutV01({ seed: { kind, locator }, provider, artifactStore, packetStore, ledger, budgets, target_packet_count: Number(option("target-packet-count", "5")) });

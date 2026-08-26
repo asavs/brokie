@@ -10,8 +10,7 @@ CREATE TABLE IF NOT EXISTS scout_runs (
  run_id TEXT PRIMARY KEY, seed_json TEXT NOT NULL, provider TEXT NOT NULL, requested_model TEXT NOT NULL,
  prompt_version TEXT NOT NULL, action_schema_version TEXT NOT NULL, started_at TEXT NOT NULL,
  finished_at TEXT, status TEXT NOT NULL CHECK(status IN ('running','completed','partial','blocked','failed')),
- budget_json TEXT NOT NULL, counters_json TEXT, terminal_reason_codes_json TEXT, unresolved_work_json TEXT,
- research_request_json TEXT
+ budget_json TEXT NOT NULL, counters_json TEXT, terminal_reason_codes_json TEXT, unresolved_work_json TEXT
 );
 CREATE TABLE IF NOT EXISTS scout_events (
  run_id TEXT NOT NULL REFERENCES scout_runs(run_id), sequence INTEGER NOT NULL, occurred_at TEXT NOT NULL,
@@ -42,19 +41,17 @@ export class ScoutLedger {
   constructor(file, { now = () => new Date().toISOString() } = {}) {
     fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
     this.db = new DatabaseSync(file); this.db.exec(SQL);
-    const columns = new Set(this.db.prepare("PRAGMA table_info(scout_runs)").all().map(({ name }) => name));
-    if (!columns.has("research_request_json")) this.db.exec("ALTER TABLE scout_runs ADD COLUMN research_request_json TEXT");
     this.now = now; this.events = new Map();
   }
-  start({ seed, provider, requested_model, prompt_version, action_schema_version, budget, research_request = null }) {
+  start({ seed, provider, requested_model, prompt_version, action_schema_version, budget }) {
     const run_id = `scoutrun_${crypto.randomUUID().replaceAll("-", "")}`;
     this.db.prepare(`INSERT INTO scout_runs (
       run_id, seed_json, provider, requested_model, prompt_version, action_schema_version,
       started_at, finished_at, status, budget_json, counters_json,
-      terminal_reason_codes_json, unresolved_work_json, research_request_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'running', ?, NULL, NULL, NULL, ?)` ).run(
+      terminal_reason_codes_json, unresolved_work_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'running', ?, NULL, NULL, NULL)` ).run(
       run_id, canonicalJson(seed), provider, requested_model, prompt_version, action_schema_version,
-      this.now(), canonicalJson(budget), research_request ? canonicalJson(research_request) : null,
+      this.now(), canonicalJson(budget),
     );
     this.events.set(run_id, []); return run_id;
   }

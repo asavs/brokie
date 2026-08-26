@@ -1,64 +1,21 @@
-# Scout v0.2 simplification audit
+# Scout v0.2 simplification record
 
-Status: corrective implementation note
+The first corrective design asked Scout to navigate, select exact evidence, parse values, reconcile sources, describe conflicts, and answer a multi-topic research request in one strict action protocol. Live free models frequently failed that protocol, and the code accumulated repair logic around them.
 
-Date: 2026-08-26
+That design confused acquisition with catalog interpretation.
 
-## Reason
+The replacement boundary is intentionally plain:
 
-The first corrective implementation made model unreliability an architectural concern.
-One 328-line orchestration function discovered sources, fetched pages, interpreted
-model actions, repaired malformed primitives, split mixed-source findings, inserted
-omitted collection evidence, re-scoped references, reinterpreted conflicts, normalized
-outcomes, retried failures, built packets, and finalized runs.
+> Scout went looking for free stuff. This is what it found, where it found it, and what it could not access.
 
-That structure was truthful in many edge cases but not maintainable. It also obscured
-the more important boundary: free-provider reliability and model-specific output repair
-are not Scout responsibilities.
+The pre-release contract therefore removed:
 
-## Measured baseline
+- research requests and topic outcomes;
+- Scout findings, parsed primitives, and conflicts;
+- evidence-selection requirements;
+- authority and catalog judgments;
+- semantic repair and packet-derivation tooling.
 
-Before refactoring, ESLint reported:
+Scout now chooses only files, listing indexes, and at most one extracted link. Deterministic code performs acquisition, storage, readable-text conversion, provenance, budgets, and identity. Librarian receives the material and owns every interpretation.
 
-- `runScoutV02`: cyclomatic complexity 152 and 319 lines;
-- `validateActionV02`: complexity 76;
-- `validatePacketV02`: complexity 115 and 117 lines;
-- readable-content helpers: complexity 15 and 18;
-- dogfood report generator: complexity 17;
-- 61 total complexity, nesting, or function-length violations.
-
-The enforced limit is now complexity 12, nesting depth 3, and 80 lines per function
-across `packages/scout/**/*v02*.mjs`. There are no suppressions or grandfathered files.
-The project uses supported ESLint 10, so its Node 22 minimum is aligned from 22.5 to
-22.13, the maintenance release required by that toolchain.
-
-## Resulting shape
-
-The runner now coordinates small explicit phases:
-
-```text
-seed initialization
-  -> collection discovery
-  -> listed-page acquisition
-  -> optional evidence-page acquisition
-  -> strict model action
-  -> deterministic research assembly
-  -> packet validation
-  -> immutable storage
-```
-
-Separate modules own action syntax, discovery, acquisition, research assembly, packet
-construction, readable transformation, reporting, and validation. The runner contains
-no semantic repair pipeline.
-
-## Failure policy
-
-An unavailable provider becomes `external_model_unavailable`. Malformed, invented, or
-semantically invalid structured output becomes `external_model_protocol_error`. The
-active subject is blocked once, the ledger records a TODO stating that provider retry
-and adaptation are out of scope, and Scout moves on. There is no correction prompt or
-retry streak.
-
-This deliberately trades live completion rate for a smaller and more truthful core.
-Improving a free provider route can later happen in an outer orchestrator or provider
-adapter without changing Scout evidence semantics.
+The complexity lint remains a guardrail: Scout functions must stay at cyclomatic complexity 12 or less, nesting depth 3 or less, and 80 lines or less. No suppressions are present.

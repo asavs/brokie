@@ -1,55 +1,52 @@
 import { packetId } from "./canonical.mjs";
 
-export function blockedResearchV02(researchRequest, reason) {
+function pageMaterial({ page }) {
   return {
-    excerpts: [],
-    findings: [],
-    conflicts: [],
-    outcomes: researchRequest.topics.map(({ topic }) => ({
-      topic,
-      status: "blocked",
-      finding_ids: [],
-      conflict_ids: [],
-      unresolved_questions: [reason],
-    })),
+    role: page.role,
+    requested_url: page.requested_locator,
+    final_url: page.final_locator,
+    depth: page.depth,
+    status: page.status,
+    content_reasons: page.content_reasons,
+    raw_artifact_id: page.raw_artifact_id,
+    readable_artifact_id: page.readable_artifact_id,
+    transformation: page.transformation,
+    parent_url: page.parent_url,
+    originating_link: page.originating_link,
+    http_status: page.http_status,
+    failure: page.failure,
   };
 }
 
-export function buildSubjectPacketV02({ subject, research, researchRequest, seed, repository }) {
-  const acquisitions = research.acquisitions ?? [subject.listing, ...subject.pages.map(({ page }) => page)];
+export function buildScoutPacketV02({ subject, seed, repository }) {
   const packet = {
     schema_version: "0.2.0",
     packet_id: "",
-    research_request: researchRequest,
     seed: {
       kind: seed.kind,
-      locator: repository?.root ?? new URL(seed.locator).href,
+      locator: repository?.locator ?? repository?.root ?? new URL(seed.locator).href,
       revision: repository?.revision ?? null,
     },
     subject: {
-      source_label: subject.chosen.source_label,
-      primary_url: subject.primary_url,
-      collection_excerpt_id: subject.listingExcerpt.excerpt_id,
+      source_label: subject.candidate.source_label,
+      primary_url: subject.primaryUrl,
     },
-    acquisitions: [...acquisitions].sort((a, b) => a.depth - b.depth || a.acquisition_id.localeCompare(b.acquisition_id)),
-    excerpts: [...research.excerpts].sort(compareExcerpts),
-    findings: research.findings,
-    conflicts: research.conflicts,
-    research_outcomes: research.outcomes,
-    unresolved_questions: [...new Set(research.outcomes.flatMap(({ unresolved_questions }) => unresolved_questions))].sort(),
+    collection: {
+      locator: subject.source.locator,
+      artifact_id: subject.listing.artifact_id,
+      start_byte: subject.listing.start_byte,
+      end_byte: subject.listing.end_byte,
+      text: subject.listing.text,
+    },
+    pages: subject.pages.map(pageMaterial)
+      .sort((a, b) => a.depth - b.depth || a.final_url.localeCompare(b.final_url)),
   };
   packet.packet_id = packetId(packet);
   return packet;
 }
 
-function compareExcerpts(a, b) {
-  if (a.role === b.role) return a.excerpt_id.localeCompare(b.excerpt_id);
-  return a.role === "collection_listing" ? -1 : 1;
-}
-
-export function aggregateResearchStatusV02(packet) {
-  const statuses = packet.research_outcomes.map(({ status }) => status);
-  if (statuses.every((status) => status === "answered")) return "answered";
-  if (statuses.some((status) => ["answered", "partially_answered", "conflicting"].includes(status))) return "partial";
-  return "blocked";
+export function materialStatusV02(packet) {
+  if (!packet.pages.length || packet.pages.every(({ status }) => status !== "acquired")) return "collection_only";
+  const incomplete = packet.pages.some(({ status, content_reasons }) => status !== "acquired" || content_reasons.length);
+  return incomplete ? "partial" : "acquired";
 }

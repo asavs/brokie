@@ -40,6 +40,7 @@ function failedAcquisition({ role, destination, parent, link, code, authorityVal
     readable_artifact_id: null,
     transformation: null,
     parent_acquisition_id: parent.acquisition_id,
+    parent_url: parent.final_locator,
     originating_link: link,
     http_status: null,
     failure: { code },
@@ -62,6 +63,7 @@ function acquiredPage({ role, destination, parent, link, fetched, readable, auth
     readable_artifact_id: readable.artifact.artifact_id,
     transformation: readable.transformation,
     parent_acquisition_id: parent.acquisition_id,
+    parent_url: parent.final_locator,
     originating_link: link,
     http_status: fetched.http_status,
     failure: null,
@@ -98,7 +100,7 @@ export async function fetchLinkedPageV02({ subject, link, role, parent, httpTool
     const readable = createReadableArtifact(fetched.bytes, manifest.media_type, artifactStore);
     const page = acquiredPage({ role, destination, parent, link, fetched, readable, authorityValue });
     const links = inspectLinks(fetched.bytes, { artifactId: fetched.artifact_id, baseLocator: fetched.final_locator, sourceDepth: page.depth });
-    const relevant = boundedRelevantLinks(links).map((item) => ({ ...item, source_acquisition_id: page.acquisition_id }));
+    const relevant = boundedRelevantLinks(links);
     return { page, segments: pageSegments(page, readable), links, relevant, incomplete: readable.incomplete };
   } catch (error) {
     const code = failureCode(error);
@@ -110,15 +112,15 @@ export async function fetchLinkedPageV02({ subject, link, role, parent, httpTool
 export function pageObservationV02(subject, fetched) {
   return {
     type: "page",
-    listing_index: subject.index,
-    acquisition_id: fetched.page.acquisition_id,
     role: fetched.page.role,
-    final_locator: fetched.page.final_locator,
+    final_url: fetched.page.final_locator,
     http_status: fetched.page.http_status,
-    content_state: fetched.page.content_state,
     content_reasons: fetched.page.content_reasons,
-    evidence_segments: fetched.segments,
-    outgoing_links: fetched.relevant ?? [],
-    content_incomplete: fetched.incomplete,
+    readable_text: fetched.segments.map(({ text }) => text).join("\n"),
+    outgoing_links: (fetched.relevant ?? []).map((link) => ({
+      index: link.index,
+      label: link.label,
+      resolved_destination: link.resolved_destination,
+    })),
   };
 }

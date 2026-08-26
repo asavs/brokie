@@ -138,7 +138,12 @@ export function boundedRelevantLinks(links, maximum = 40) {
     return { link, original_index: index, score };
   }).sort((a, b) => b.score - a.score || a.original_index - b.original_index)
     .slice(0, maximum)
-    .map(({ link, original_index }) => ({ index: original_index, label: link.label.slice(0, 300), resolved_destination: link.resolved_destination }));
+    .map(({ link, original_index }) => ({
+      index: original_index,
+      label: link.label.slice(0, 300),
+      resolved_destination: link.resolved_destination,
+      link,
+    }));
 }
 
 export { TRANSFORMATION as HTML_READABLE_TRANSFORMATION };

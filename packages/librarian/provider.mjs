@@ -7,6 +7,10 @@ const PROVIDERS = {
     baseUrl: "https://integrate.api.nvidia.com/v1",
     keyName: "NVIDIA_NIM_API_KEY",
   },
+  gemini: {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    keyName: "GEMINI_API_KEY",
+  },
 };
 
 export function providerEnvironmentKey(provider) {
@@ -22,6 +26,7 @@ export function createCompatibleProvider({
   fetchImpl = fetch,
   timeoutMs = 120_000,
   maxTokens = 6_000,
+  allowPaid = false,
 }) {
   const configuration = PROVIDERS[provider];
   if (!configuration) throw new Error(`unsupported provider: ${provider}`);
@@ -29,6 +34,7 @@ export function createCompatibleProvider({
   if (provider === "openrouter" && model !== "openrouter/free" && !model.endsWith(":free")) {
     throw new Error(`refusing non-free OpenRouter model: ${model}`);
   }
+  if (provider === "gemini" && !allowPaid) throw new Error("refusing paid Gemini route without explicit authorization");
   const nvidiaReasoningOptions =
     provider !== "nvidia"
       ? {}

@@ -44,7 +44,7 @@ if (packetSetPath) {
   evaluationId = runId; selections = ledger.db.prepare("SELECT packet_id FROM scout_packets WHERE run_id=? ORDER BY ordinal").all(runId).map((row) => ({ ...row, run }));
 }
 if (new Set(selections.map(({ packet_id }) => packet_id)).size !== selections.length) throw new Error("packet-set contains duplicates");
-const provider = createCompatibleProvider({ provider: providerName, model, apiKey: process.env[providerEnvironmentKey(providerName)], maxTokens, timeoutMs });
+const provider = createCompatibleProvider({ provider: providerName, model, apiKey: process.env[providerEnvironmentKey(providerName)], maxTokens, timeoutMs, allowPaid: option("allow-paid-provider", "") === providerName });
 const results = [];
 try {
   for (const { packet_id: packetId, run } of selections) {

@@ -55,6 +55,7 @@ const provider = createCompatibleProvider({
   apiKey: process.env[keyName],
   timeoutMs: Number(option("timeout-ms", 120_000)),
   maxTokens: Number(option("max-tokens", 6_000)),
+  allowPaid: option("allow-paid-provider", "") === providerName,
 });
 const catalog = new DatabaseSync(path.join(stateDir, "catalog-v0.1.sqlite"));
 createCatalogStore(catalog);

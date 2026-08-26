@@ -1,5 +1,9 @@
 # Scout v0.2 corrective dogfood report
 
+> Historical pre-simplification evaluation. This report describes the superseded
+> research-heavy v0.2 packet contract and is retained as failure evidence. The active
+> pre-release Scout v0.2 contract is acquisition-only; see `docs/SCOUT-V0.2.md`.
+
 This report records the corrective five-subject evaluation. It is assembled from the
 Scout ledger, immutable packet store, packet-derivation manifest, and retained
 Librarian runs. It intentionally excludes raw third-party pages, provider responses,
