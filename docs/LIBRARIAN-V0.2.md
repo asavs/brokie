@@ -23,7 +23,8 @@ The model returns only:
 - zero or more exact controlled capability IDs;
 - either no evidenced offer or one collection-local offer;
 - compact entitlements;
-- explicitly stated boolean and audience conditions.
+- compact constraints, including nested limits and exclusions;
+- explicitly stated boolean, credential, source-local, and audience conditions.
 
 It does not return source snapshot IDs, evidence IDs, catalog IDs, local keys, support envelopes, organization roles, links, comparison candidates, review state, the catalog schema, or the full vocabulary document.
 
@@ -41,6 +42,8 @@ Brokie:
 - normalizes common comparator aliases such as `eq`, `lte`, and `gte`;
 - expands explicit thousand/million/billion magnitude units;
 - fills empty condition arrays and harmless cost-scope unknowns;
+- validates optional constraint and condition targets against proposed entitlements;
+- compiles constraints and four condition families into the durable v0.1 candidate;
 - removes unknown capability IDs;
 - withholds a small set of high-risk capabilities when the listing lacks their defining evidence;
 - prevents cadence words from becoming quantity source units;
@@ -67,10 +70,12 @@ The retained ignored state is:
 
 The current queue contains 1,291 unprocessed packets and eight review-required results. The live samples deliberately stopped there.
 
-The later ten-listing, sixteen-job multi-route evaluation is recorded in
+The original ten-listing evaluation is recorded in
 [`evaluations/LIBRARIAN-V0.2-TEN-2026-08-26.md`](evaluations/LIBRARIAN-V0.2-TEN-2026-08-26.md).
-It produced two clean jobs, three safe deferrals, nine candidates needing semantic
-revision, and two bounded provider failures. Bulk processing remains paused.
+The corrective rerun is recorded in
+[`evaluations/LIBRARIAN-V0.2.1-TEN-2026-08-26.md`](evaluations/LIBRARIAN-V0.2.1-TEN-2026-08-26.md).
+It produced three clean jobs, four safe deferrals, nine candidates needing semantic
+revision, and no terminal provider failures. Bulk processing remains paused.
 
 Observed route behavior:
 
@@ -85,6 +90,7 @@ Provider token accounting varies substantially. The post-fix CloudFront request 
 ## Known limits
 
 - The v0.1 capability vocabulary is too narrow for broad free-for-dev coverage. Missing concepts must not be replaced with semantically adjacent IDs.
+- Live model recall for external credentials and source-local verification requirements remains unproven even though deterministic fixtures cover their complete compilation path.
 - One whole collection listing is currently the selected evidence span. It is exact and bounded, but not yet claim-minimal.
 - The model can still write a poor function description or misclassify a supported capability; deterministic validation cannot prove semantic correctness.
 - A collection listing can establish an unverified candidate, not current official truth.

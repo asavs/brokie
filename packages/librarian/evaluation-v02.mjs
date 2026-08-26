@@ -131,7 +131,10 @@ async function evaluateJob({ sourceRoot, outputRoot, packet, observedAt, routeId
 export async function runEvaluationV02({ manifestPath, sourceRoot, outputRoot }) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   const jobCount = validateManifest(manifest);
-  if (path.basename(outputRoot) !== manifest.evaluation_id) throw new Error("output directory must end with evaluation_id");
+  const outputId = path.basename(outputRoot);
+  if (outputId !== manifest.evaluation_id && !outputId.startsWith(`${manifest.evaluation_id}-`)) {
+    throw new Error("output directory must use evaluation_id or an evaluation_id suffix");
+  }
   const labels = new Set(manifest.cases.map(({ source_label: label }) => label));
   const packets = selectedPackets(sourceRoot, labels);
   const observed = observedAtByPacket(sourceRoot);

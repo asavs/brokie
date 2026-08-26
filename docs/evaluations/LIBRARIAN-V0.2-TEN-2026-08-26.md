@@ -4,6 +4,9 @@ Date: 2026-08-26
 
 Status: completed; bulk queue remains paused
 
+Follow-up: the compact contract correction and same-sample rerun are recorded in
+[`LIBRARIAN-V0.2.1-TEN-2026-08-26.md`](LIBRARIAN-V0.2.1-TEN-2026-08-26.md).
+
 ## Question
 
 Can the simplified Librarian turn a small, varied set of collection-only Scout packets into faithful review candidates through several free or explicitly authorized quota routes?
