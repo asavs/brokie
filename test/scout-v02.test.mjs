@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { ArtifactStore, PacketStore } from "../packages/scout/store.mjs";
 import { ScoutLedger } from "../packages/scout/ledger.mjs";
 import { createPacketValidatorV02 } from "../packages/scout/validate-packet-v02.mjs";
-import { extractActionV02, normalizeActionV02, runScoutV02, validateActionV02 } from "../packages/scout/runner-v02.mjs";
+import { extractActionV02, runScoutV02, validateActionV02 } from "../packages/scout/runner-v02.mjs";
 import { packetToLibrarianBundle } from "../packages/scout/adapter-v02.mjs";
 import { packetId } from "../packages/scout/canonical.mjs";
 import { conflictIdV02, findingIdV02 } from "../packages/scout/identity-v02.mjs";
@@ -15,7 +15,8 @@ import { createReadableArtifact } from "../packages/scout/readable-v02.mjs";
 import { deriveTruthfulPacketV02 } from "../packages/scout/derive-packet-v02.mjs";
 
 delete process.env.OPENROUTER_API_KEY; delete process.env.NVIDIA_NIM_API_KEY;
-assert.deepEqual(extractActionV02("```json\n{\"type\":\"finalize\"}\n```"), { type: "finalize" });
+assert.throws(() => extractActionV02("```json\n{\"type\":\"finalize\"}\n```"), /external_model_protocol_error/);
+assert.deepEqual(extractActionV02("{\"type\":\"finalize\"}"), { type: "finalize" });
 const temp = path.join(import.meta.dirname, "tmp", "scout-v02"); fs.rmSync(temp, { recursive: true, force: true }); fs.mkdirSync(temp, { recursive: true });
 const repo = path.join(temp, "revision-source"); fs.mkdirSync(repo);
 const fillerListings = Array.from({ length: 120 }, (_, index) => `- [Filler ${index}](https://filler-${index}.example/) - Unselected fixture.`).join("\n");
@@ -44,7 +45,7 @@ async function transport(url) {
 const lookup = async () => [{ address: "203.0.113.20", family: 4 }];
 const primitive = (kind, sourceText, values = {}) => ({ kind, source_text: sourceText, value: null, unit_text: null, currency: null, cadence: null, date_text: null, boolean_value: null, audience_text: null, ...values });
 const misplacedBoolean = { type: "record_research", listing_index: 0, findings: [{ topic: "requirements", derivation: "explicit", statement_segment_id: "segment", evidence_segment_ids: ["segment"], parsed_values: [primitive("boolean_requirement", "No card required", { value: false, boolean_value: false })] }], conflicts: [], outcomes: [] };
-const normalizedBoolean = normalizeActionV02(misplacedBoolean); assert.equal(normalizedBoolean.action.findings[0].parsed_values[0].value, null); assert.equal(normalizedBoolean.action.findings[0].parsed_values[0].boolean_value, false); assert.equal(normalizedBoolean.repairs.length, 1); validateActionV02(normalizedBoolean.action);
+assert.throws(() => validateActionV02(misplacedBoolean), /external_model_protocol_error/);
 
 class ResearchProvider {
   constructor(order, model) { this.order = order; this.provider = "scripted"; this.model = model; this.calls = 0; }
@@ -101,6 +102,20 @@ class SubjectFailureProvider extends ResearchProvider {
   }
 }
 
+class ProviderUnavailableProvider extends ResearchProvider {
+  async complete(messages) {
+    const context = JSON.parse(messages.at(-1).content);
+    const activeResearch = context.active_listing_index !== null && context.allowed_actions.includes("record_research");
+    if (activeResearch) {
+      this.calls += 1;
+      const error = new Error("fixture provider unavailable");
+      error.code = "provider_error";
+      throw error;
+    }
+    return super.complete(messages);
+  }
+}
+
 class MissingComparisonProvider extends ResearchProvider {
   constructor(order, model) { super(order, model); this.omitted = false; }
   async complete(messages) {
@@ -111,41 +126,6 @@ class MissingComparisonProvider extends ResearchProvider {
       action.conflicts = [];
       action.outcomes = action.outcomes.map((outcome) => {
         if (outcome.topic === "numerical_limits") return { ...outcome, status: "answered", finding_indexes: [1], conflict_indexes: [], unresolved_questions: [] };
-        return { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 1 ? index - 1 : index) };
-      });
-      return { ...reply, content: JSON.stringify(action) };
-    }
-    return reply;
-  }
-}
-
-class MixedSourceProvider extends ResearchProvider {
-  async complete(messages) {
-    const reply = await super.complete(messages), action = JSON.parse(reply.content);
-    if (action.type === "record_research" && action.findings.some(({ statement_segment_id }) => statement_segment_id.endsWith(":listing"))) {
-      const collection = action.findings[1], linked = action.findings[2];
-      action.findings.splice(1, 2, { ...linked, evidence_segment_ids: [...new Set([...collection.evidence_segment_ids, ...linked.evidence_segment_ids])], parsed_values: [...collection.parsed_values, ...linked.parsed_values] });
-      action.conflicts = [{ ...action.conflicts[0], finding_indexes: [1, 4] }];
-      action.outcomes = action.outcomes.map((outcome) => {
-        if (outcome.topic === "numerical_limits") return { ...outcome, finding_indexes: [1, 4] };
-        const adjusted = { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 2 ? index - 1 : index) };
-        if (outcome.topic === "material_caveats") return { ...adjusted, status: "partially_answered", conflict_indexes: [0], unresolved_questions: ["The caveat remains source-local and unresolved."] };
-        return adjusted;
-      });
-      return { ...reply, content: JSON.stringify(action) };
-    }
-    return reply;
-  }
-}
-
-class OmittedConflictEvidenceProvider extends ResearchProvider {
-  async complete(messages) {
-    const reply = await super.complete(messages), action = JSON.parse(reply.content);
-    if (action.type === "record_research" && action.findings.some(({ statement_segment_id }) => statement_segment_id.endsWith(":listing"))) {
-      action.findings.splice(1, 1);
-      action.conflicts = [{ topic: "numerical_limits", finding_indexes: [0, 1], observation: "The quantified collection statement differs from current first-party limits." }];
-      action.outcomes = action.outcomes.map((outcome) => {
-        if (outcome.topic === "numerical_limits") return { ...outcome, status: "conflicting", finding_indexes: [1], conflict_indexes: [0], unresolved_questions: [] };
         return { ...outcome, finding_indexes: outcome.finding_indexes.map((index) => index > 1 ? index - 1 : index) };
       });
       return { ...reply, content: JSON.stringify(action) };
@@ -174,21 +154,18 @@ assert.doesNotMatch(JSON.stringify(alpha), /Ignore prior instructions|window\.__
 first.validator(alpha); first.validator(beta);
 
 const isolatedState = state("isolated-failure"), isolatedResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new SubjectFailureProvider(["Alpha", "Beta"], "route-isolated"), artifactStore: isolatedState.artifacts, packetStore: isolatedState.packets, ledger: isolatedState.ledger, budgets, target_packet_count: 2, target_labels: ["Alpha", "Beta"], transport, lookup });
-assert.equal(isolatedResult.status, "completed"); assert.equal(isolatedResult.packets.length, 2); assert.ok(isolatedResult.packets.find(({ packet }) => packet.subject.source_label === "Alpha").packet.research_outcomes.every(({ status }) => status === "blocked"));
-assert.equal(isolatedState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_events WHERE run_id=? AND event_type='research_blocked'").get(isolatedResult.run_id).count, 1); isolatedState.ledger.close();
+assert.equal(isolatedResult.status, "blocked"); assert.equal(isolatedResult.packets.length, 2); assert.ok(isolatedResult.packets.find(({ packet }) => packet.subject.source_label === "Alpha").packet.research_outcomes.every(({ status }) => status === "blocked"));
+assert.equal(isolatedState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_events WHERE run_id=? AND event_type='external_research_failure'").get(isolatedResult.run_id).count, 1);
+const externalFailure = isolatedState.ledger.db.prepare("SELECT normalized_json FROM scout_events WHERE run_id=? AND event_type='external_research_failure'").get(isolatedResult.run_id); assert.match(externalFailure.normalized_json, /external_model_protocol_error/); assert.match(externalFailure.normalized_json, /intentionally out of scope/); isolatedState.ledger.close();
+
+const unavailableState = state("provider-unavailable"), unavailableResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new ProviderUnavailableProvider(["Alpha"], "route-unavailable"), artifactStore: unavailableState.artifacts, packetStore: unavailableState.packets, ledger: unavailableState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
+assert.equal(unavailableResult.status, "blocked"); assert.equal(unavailableResult.packets.length, 1); assert.ok(unavailableResult.packets[0].packet.research_outcomes.every(({ status }) => status === "blocked"));
+const unavailableFailure = unavailableState.ledger.db.prepare("SELECT normalized_json FROM scout_events WHERE run_id=? AND event_type='external_research_failure'").get(unavailableResult.run_id); assert.match(unavailableFailure.normalized_json, /external_model_unavailable/); assert.equal(unavailableState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_attempts WHERE run_id=? AND failure_code='external_model_unavailable'").get(unavailableResult.run_id).count, 1); unavailableState.ledger.close();
 
 const comparisonState = state("comparison-recovery"), comparisonResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new MissingComparisonProvider(["Alpha"], "route-comparison"), artifactStore: comparisonState.artifacts, packetStore: comparisonState.packets, ledger: comparisonState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
-const comparisonPacket = comparisonResult.packets[0].packet, comparisonNumerical = comparisonPacket.findings.filter(({ topic }) => topic === "numerical_limits");
-assert.equal(comparisonResult.status, "completed"); assert.equal(comparisonPacket.conflicts.length, 0); assert.equal(comparisonNumerical.length, 2);
-assert.equal(comparisonPacket.research_outcomes.find(({ topic }) => topic === "numerical_limits").status, "partially_answered"); assert.equal(comparisonState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_attempts WHERE run_id=? AND failure_code='invalid_agent_action'").get(comparisonResult.run_id).count, 0); comparisonState.ledger.close();
-
-const mixedState = state("mixed-source-recovery"), mixedResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new MixedSourceProvider(["Alpha"], "route-mixed"), artifactStore: mixedState.artifacts, packetStore: mixedState.packets, ledger: mixedState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
-const mixedPacket = mixedResult.packets[0].packet, mixedNumerical = mixedPacket.findings.filter(({ topic }) => topic === "numerical_limits");
-assert.equal(mixedResult.status, "completed"); assert.equal(mixedNumerical.length, 2); assert.ok(mixedNumerical.every(({ acquisition_ids }) => acquisition_ids.length === 1)); assert.equal(mixedPacket.conflicts[0].finding_ids.length, 2); mixedState.ledger.close();
-
-const omittedConflictState = state("omitted-conflict-evidence"), omittedConflictResult = await runScoutV02({ seed: { kind: "git", locator: repo }, provider: new OmittedConflictEvidenceProvider(["Alpha"], "route-omitted-conflict"), artifactStore: omittedConflictState.artifacts, packetStore: omittedConflictState.packets, ledger: omittedConflictState.ledger, budgets, target_packet_count: 1, target_labels: ["Alpha"], transport, lookup });
-const omittedConflictPacket = omittedConflictResult.packets[0].packet;
-assert.equal(omittedConflictResult.status, "completed"); assert.equal(omittedConflictPacket.research_outcomes.find(({ topic }) => topic === "numerical_limits").status, "conflicting"); assert.equal(omittedConflictPacket.conflicts[0].finding_ids.length, 2); omittedConflictState.ledger.close();
+const comparisonPacket = comparisonResult.packets[0].packet;
+assert.equal(comparisonResult.status, "blocked"); assert.equal(comparisonPacket.findings.length, 0); assert.ok(comparisonPacket.research_outcomes.every(({ status }) => status === "blocked"));
+assert.equal(comparisonState.ledger.db.prepare("SELECT COUNT(*) AS count FROM scout_attempts WHERE run_id=? AND failure_code='external_model_protocol_error'").get(comparisonResult.run_id).count, 1); comparisonState.ledger.close();
 
 const second = await run("second", ["Alpha"], "different-free-route", shared), secondAlpha = second.result.packets[0];
 assert.equal(secondAlpha.packet.packet_id, alpha.packet_id); assert.equal(secondAlpha.storage_status, "reused");

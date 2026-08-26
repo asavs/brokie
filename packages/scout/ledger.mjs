@@ -82,6 +82,10 @@ export class ScoutLedger {
     this.db.prepare("UPDATE scout_attempts SET status='invalid_agent_action', failure_code=? WHERE run_id=? AND attempt_number=?")
       .run(failureCode, runId, attemptNumber);
   }
+  rejectAttempt(runId, attemptNumber, failureCode) {
+    this.db.prepare("UPDATE scout_attempts SET status=?, failure_code=? WHERE run_id=? AND attempt_number=?")
+      .run(failureCode, failureCode, runId, attemptNumber);
+  }
   toolCall(runId, call) {
     const sequence = this.db.prepare("SELECT COALESCE(MAX(sequence),0)+1 AS sequence FROM scout_tool_calls WHERE run_id=?").get(runId).sequence;
     this.db.prepare("INSERT INTO scout_tool_calls VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(

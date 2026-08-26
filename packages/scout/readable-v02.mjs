@@ -29,26 +29,50 @@ function htmlToText(html) {
     .trim();
 }
 
+function readableText(rawText, mediaType) {
+  return mediaType === "text/html" ? htmlToText(rawText) : rawText.replace(/\r\n/g, "\n").trim();
+}
+
+function ensureDistinctRepresentation(bytes, rawBytes, mediaType) {
+  if (mediaType !== "text/html") return bytes;
+  return bytes.equals(Buffer.from(rawBytes)) ? Buffer.concat([bytes, Buffer.from("\n")]) : bytes;
+}
+
+function contentReasons(rawBytes, bytes, rawText, text, mediaType) {
+  if (mediaType !== "text/html") return [];
+  const reasons = [];
+  if (/enable javascript|javascript (?:is )?required|please turn on javascript/i.test(`${rawText}\n${text}`)) reasons.push("browser_required");
+  if (rawBytes.length > 20_000 && bytes.length < 500) reasons.push("readable_content_sparse");
+  return reasons;
+}
+
+function existingReadableArtifact(artifactStore, artifactId) {
+  try {
+    const existing = artifactStore.read(artifactId).manifest;
+    if (!["derived_text", "readable_text"].includes(existing.kind)) throw new Error("readable artifact identity collides with a non-readable representation");
+    if (existing.media_type !== "text/plain") throw new Error("readable artifact identity collides with a non-readable representation");
+    return { ...existing, storage_status: "reused" };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return null;
+  }
+}
+
 export function createReadableArtifact(rawBytes, mediaType, artifactStore) {
   const rawText = new TextDecoder("utf-8", { fatal: true }).decode(rawBytes);
-  const readableText = mediaType === "text/html" ? htmlToText(rawText) : rawText.replace(/\r\n/g, "\n").trim();
-  let bytes = Buffer.from(readableText, "utf8");
-  const rawArtifactId = `art_sha256_${sha256(rawBytes)}`;
-  if (mediaType === "text/html" && bytes.equals(Buffer.from(rawBytes))) bytes = Buffer.concat([bytes, Buffer.from("\n")]);
-  const incompleteReasons = [];
-  if (mediaType === "text/html" && /enable javascript|javascript (?:is )?required|please turn on javascript/i.test(`${rawText}\n${readableText}`)) incompleteReasons.push("browser_required");
-  if (mediaType === "text/html" && rawBytes.length > 20_000 && bytes.length < 500) incompleteReasons.push("readable_content_sparse");
-  const incomplete = incompleteReasons.length > 0;
-  if (bytes.equals(Buffer.from(rawBytes))) return { artifact: artifactStore.read(rawArtifactId).manifest, bytes, incomplete, incompleteReasons, transformation: null };
+  const text = readableText(rawText, mediaType);
+  const bytes = ensureDistinctRepresentation(Buffer.from(text, "utf8"), rawBytes, mediaType);
+  const incompleteReasons = contentReasons(rawBytes, bytes, rawText, text, mediaType);
+  const common = { bytes, incomplete: incompleteReasons.length > 0, incompleteReasons };
+  if (bytes.equals(Buffer.from(rawBytes))) {
+    const artifact = artifactStore.read(`art_sha256_${sha256(rawBytes)}`).manifest;
+    return { artifact, ...common, transformation: null };
+  }
   const transformation = mediaType === "text/html" ? TRANSFORMATION : "utf8-readable-text@0.2.0";
-  const readableArtifactId = `art_sha256_${sha256(bytes)}`;
-  try {
-    const existing = artifactStore.read(readableArtifactId).manifest;
-    if (!["derived_text", "readable_text"].includes(existing.kind) || existing.media_type !== "text/plain") throw new Error("readable artifact identity collides with a non-readable representation");
-    return { artifact: { ...existing, storage_status: "reused" }, bytes, incomplete, incompleteReasons, transformation };
-  } catch (error) { if (error.code !== "ENOENT") throw error; }
-  const artifact = artifactStore.put(bytes, { kind: "readable_text", media_type: "text/plain" });
-  return { artifact, bytes, incomplete, incompleteReasons, transformation };
+  const artifactId = `art_sha256_${sha256(bytes)}`;
+  const existing = existingReadableArtifact(artifactStore, artifactId);
+  const artifact = existing ?? artifactStore.put(bytes, { kind: "readable_text", media_type: "text/plain" });
+  return { artifact, ...common, transformation };
 }
 
 function utf8End(bytes, proposed) {
@@ -57,9 +81,12 @@ function utf8End(bytes, proposed) {
   return end;
 }
 
-export function boundedReadableSegments(bytes, { maxBytes = 24_000, segmentBytes = 2_000 } = {}) {
-  if (!Number.isInteger(maxBytes) || maxBytes < 1 || !Number.isInteger(segmentBytes) || segmentBytes < 1) throw new Error("invalid readable bounds");
-  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+function validateBounds(maxBytes, segmentBytes) {
+  if (!Number.isInteger(maxBytes) || maxBytes < 1) throw new Error("invalid readable bounds");
+  if (!Number.isInteger(segmentBytes) || segmentBytes < 1) throw new Error("invalid readable bounds");
+}
+
+function candidateSegments(bytes, text, segmentBytes) {
   const segments = [];
   let codeUnits = 0;
   for (const part of text.split(/\n+/)) {
@@ -76,8 +103,13 @@ export function boundedReadableSegments(bytes, { maxBytes = 24_000, segmentBytes
       cursor = segmentEnd;
     }
   }
-  const ranked = segments.sort((a, b) => b.score - a.score || a.start_byte - b.start_byte);
-  const chosen = []; let consumed = 0;
+  return segments;
+}
+
+function chooseSegments(bytes, candidates, maxBytes) {
+  const ranked = candidates.sort((a, b) => b.score - a.score || a.start_byte - b.start_byte);
+  const chosen = [];
+  let consumed = 0;
   for (const segment of ranked) {
     if (consumed >= maxBytes) break;
     const available = Math.min(maxBytes - consumed, segment.end_byte - segment.start_byte);
@@ -87,6 +119,15 @@ export function boundedReadableSegments(bytes, { maxBytes = 24_000, segmentBytes
     chosen.push({ start_byte: segment.start_byte, end_byte: end, text: new TextDecoder("utf-8", { fatal: true }).decode(slice) });
     consumed += slice.length;
   }
+  return chosen;
+}
+
+export function boundedReadableSegments(bytes, options = {}) {
+  const maxBytes = options.maxBytes ?? 24_000;
+  const segmentBytes = options.segmentBytes ?? 2_000;
+  validateBounds(maxBytes, segmentBytes);
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  const chosen = chooseSegments(bytes, candidateSegments(bytes, text, segmentBytes), maxBytes);
   return chosen.sort((a, b) => a.start_byte - b.start_byte);
 }
 
