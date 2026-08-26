@@ -25,6 +25,7 @@
     "librarian:scout-v02": "node packages/scout/librarian-eval-v02.mjs",
     "pipeline:ingest-v02": "node packages/pipeline/ingest-v02.mjs",
     "pipeline:librarian-v02": "node packages/pipeline/librarian-worker-v02.mjs",
+    "eval:librarian:v02:ten": "node packages/librarian/evaluate-v02.mjs",
     "scout:v01": "node packages/scout/cli.mjs",
     "scout:v02": "node packages/scout/cli-v02.mjs",
     "review:v01": "node packages/maintainer/review-v0.1.mjs",

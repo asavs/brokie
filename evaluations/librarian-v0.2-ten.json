@@ -1,0 +1,73 @@
+{
+  "evaluation_id": "librarian-v0.2-ten-2026-08-26",
+  "max_jobs": 20,
+  "routes": {
+    "gemini_flash_lite": {
+      "model": "google-antigravity/gemini-2.5-flash-lite",
+      "route_class": "quota",
+      "timeout_ms": 120000
+    },
+    "nvidia_minimax_m3": {
+      "model": "nvidia-nim/minimaxai/minimax-m3",
+      "route_class": "free",
+      "timeout_ms": 120000
+    },
+    "xai_grok_non_reasoning": {
+      "model": "xai-oauth/grok-4.20-0309-non-reasoning",
+      "route_class": "quota",
+      "timeout_ms": 120000
+    }
+  },
+  "cases": [
+    {
+      "source_label": "Google AI Studio",
+      "routes": ["gemini_flash_lite", "nvidia_minimax_m3", "xai_grok_non_reasoning"],
+      "purpose": "Complex rate limits, magnitudes, and model-specific allowances."
+    },
+    {
+      "source_label": "Brave Search API",
+      "routes": ["gemini_flash_lite", "nvidia_minimax_m3", "xai_grok_non_reasoning"],
+      "purpose": "Monetary credit, monthly cadence, card requirement, and API taxonomy."
+    },
+    {
+      "source_label": "CloudWatch",
+      "routes": ["gemini_flash_lite", "nvidia_minimax_m3", "xai_grok_non_reasoning"],
+      "purpose": "Generic monitoring vocabulary gap and nearest-tag trap."
+    },
+    {
+      "source_label": "Kaggle",
+      "routes": ["xai_grok_non_reasoning"],
+      "purpose": "Multiple compute limits and verification-scoped benefits."
+    },
+    {
+      "source_label": "telemetry.dev",
+      "routes": ["gemini_flash_lite"],
+      "purpose": "Supported observability capability, several limits, and no-card evidence."
+    },
+    {
+      "source_label": "ShipStatic",
+      "routes": ["xai_grok_non_reasoning"],
+      "purpose": "No-cost hosting with explicit negative requirements and a paid exclusion."
+    },
+    {
+      "source_label": "What Is My IP",
+      "routes": ["nvidia_minimax_m3"],
+      "purpose": "Generic API versus model API and unmetered no-cost access."
+    },
+    {
+      "source_label": "Transcript LOL",
+      "routes": ["gemini_flash_lite"],
+      "purpose": "Daily allowance, signup requirement, and transcription semantics."
+    },
+    {
+      "source_label": "Revdoku",
+      "routes": ["xai_grok_non_reasoning"],
+      "purpose": "Several resources plus nested capacity and item-size limits."
+    },
+    {
+      "source_label": "DB Designer",
+      "routes": ["nvidia_minimax_m3"],
+      "purpose": "Clear offer with an intentionally missing controlled capability."
+    }
+  ]
+}
