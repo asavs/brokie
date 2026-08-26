@@ -1,6 +1,10 @@
 export default [
   {
-    files: ["packages/scout/**/*v02*.mjs"],
+    files: [
+      "packages/scout/**/*v02*.mjs",
+      "packages/librarian/**/*v02*.mjs",
+      "packages/pipeline/**/*v02*.mjs",
+    ],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

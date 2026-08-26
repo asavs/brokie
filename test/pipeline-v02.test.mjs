@@ -57,23 +57,31 @@ assert.deepEqual(enqueueScoutPackets(state, first.run_id, packetIds, first.repos
 assert.deepEqual(enqueueScoutPackets(state, second.run_id, packetIds, second.repository.commit_time), { enqueued: 0, reused: 2 });
 assert.deepEqual(librarianQueueSummary(state), { queued: 2 });
 
-const fixture = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures", "data-contract", "telemetry-dev.json"), "utf8"));
+const modelRequests = [];
 const provider = {
   provider: "mock-harness",
   model: "mock/free",
   async complete(messages) {
+    modelRequests.push(messages);
     const request = JSON.parse(messages[1].content);
-    const candidate = structuredClone(fixture.candidate);
-    const name = request.source_name;
-    const url = /https?:\/\/[^)\s]+/.exec(request.scout_material_bundle.collection.text)[0];
-    candidate.source_snapshot_id = request.source_snapshot_id;
-    candidate.observed_at = request.observed_at;
-    candidate.product.source_name = name;
-    candidate.product.proposed_canonical_name.text = name;
-    candidate.product.links[0].url = url;
-    candidate.evidence_spans.find(({ id }) => id === "ev_name").quote = name;
-    candidate.evidence_spans.find(({ id }) => id === "ev_url").quote = url;
-    return { content: JSON.stringify(candidate), resolved_model: "mock/free", usage: { prompt_tokens: 1, completion_tokens: 1 } };
+    assert.deepEqual(Object.keys(request).sort(), ["allowed_capability_ids", "allowed_normalized_units", "listing", "listing_truncated", "source"]);
+    assert.ok(request.listing.includes(request.source.name));
+    const proposal = {
+      description: "OpenTelemetry-based observability service for tracing model calls and tool steps.",
+      capability_ids: ["ai_observability"],
+      offer: {
+        availability: "public",
+        entitlements: [{
+          kind: "included_usage",
+          label: "10,000 spans per month",
+          quantity: { value: 10000, comparator: "exact", source_unit: "spans", normalized_unit: "span" },
+          cadence: { interval: 1, unit: "month" },
+        }],
+        boolean_conditions: [{ kind: "credit_card", required: false }],
+        audience_conditions: [],
+      },
+    };
+    return { content: JSON.stringify(proposal), resolved_model: "mock/free", usage: { prompt_tokens: 250, completion_tokens: 80 } };
   },
 };
 const catalog = new DatabaseSync(path.join(stateRoot, "catalog.sqlite"));
@@ -81,9 +89,19 @@ createCatalogStore(catalog);
 const batch = await runLibrarianBatchV02({ state, catalog, packets, artifacts, provider, stateRoot, limit: 10 });
 assert.equal(batch.processed, 2);
 assert.ok(batch.results.every(({ status }) => status === "review_required"));
+assert.ok(batch.results.every(({ attempts }) => attempts === 1));
 assert.deepEqual(batch.queue, { review_required: 2 });
 assert.equal(catalog.prepare("SELECT COUNT(*) AS count FROM source_snapshots").get().count, 2);
 assert.equal(state.prepare("SELECT COUNT(*) AS count FROM revision_review_queue").get().count, 2);
+assert.equal(state.prepare("SELECT COUNT(*) AS count FROM librarian_runs WHERE prompt_version='librarian-v0.2'").get().count, 2);
+assert.ok(modelRequests.every((messages) => JSON.stringify(messages).length < 6000));
+assert.ok(modelRequests.every((messages) => !JSON.stringify(messages).includes("output_schema")));
+const attempt = state.prepare("SELECT raw_response, parsed_candidate_json FROM librarian_attempts ORDER BY run_id LIMIT 1").get();
+assert.equal(JSON.parse(attempt.raw_response).capability_ids[0], "ai_observability");
+const compiledCandidate = JSON.parse(attempt.parsed_candidate_json);
+assert.equal(compiledCandidate.evidence_spans.length, 1);
+assert.equal(compiledCandidate.opportunities[0].entitlements[0].quantity.value, 10000);
+assert.equal(compiledCandidate.opportunities[0].conditions[0].kind, "credit_card");
 
 const ompEvent = JSON.stringify({
   type: "message_end",

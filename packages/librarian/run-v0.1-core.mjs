@@ -122,14 +122,15 @@ export async function runLibrarianV01({
   observation,
   tracePath = "",
 }) {
+  const activePromptVersion = provider.prompt_version ?? promptVersion;
   const startedAt = new Date().toISOString();
   const runId = `run_${sha(
-    `${observation.source_snapshot_id}\n${provider.provider}\n${provider.model}`,
+    `${observation.source_snapshot_id}\n${provider.provider}\n${provider.model}${provider.run_identity_suffix ? `\n${provider.run_identity_suffix}` : ""}`,
     24,
   )}`;
   const trace = {
     run_id: runId,
-    prompt_version: promptVersion,
+    prompt_version: activePromptVersion,
     provider: provider.provider,
     requested_model: provider.model,
     source_snapshot_id: observation.source_snapshot_id,
@@ -147,14 +148,15 @@ export async function runLibrarianV01({
     observation.source_snapshot_id,
     provider.provider,
     provider.model,
-    promptVersion,
+    activePromptVersion,
     startedAt,
     tracePath,
   );
   writeTrace(tracePath, trace);
 
-  const messages = initialMessages(record, observation);
+  const messages = provider.initial_messages?.(record, observation) ?? initialMessages(record, observation);
   let acceptedCandidate = null;
+  let acceptedCompilerActions = [];
   let resolvedModel = "";
   let inputTokens = 0;
   let outputTokens = 0;
@@ -173,7 +175,10 @@ export async function runLibrarianV01({
       resolvedModel = response.resolved_model || resolvedModel || provider.model;
       inputTokens += response.usage?.prompt_tokens ?? 0;
       outputTokens += response.usage?.completion_tokens ?? 0;
-      try {
+      if (response.protocol_errors?.length) {
+        status = "validation_error";
+        validationErrors = response.protocol_errors;
+      } else try {
         candidate = extractCandidateJson(response.content);
         if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
           throw new Error("response JSON must be one candidate object");
@@ -201,9 +206,11 @@ export async function runLibrarianV01({
       status,
       resolved_model: response?.resolved_model ?? "",
       usage: response?.usage ?? null,
-      raw_response: response?.content ?? "",
+      raw_response: response?.provider_raw_response ?? response?.content ?? "",
       reasoning: response?.reasoning ?? null,
       candidate,
+      proposal: response?.proposal ?? null,
+      compiler_actions: response?.compiler_actions ?? [],
       validation_errors: validationErrors,
       normalization_actions: normalizationActions,
       error,
@@ -214,12 +221,13 @@ export async function runLibrarianV01({
 
     if (status === "accepted") {
       acceptedCandidate = candidate;
+      acceptedCompilerActions = response?.compiler_actions ?? [];
       break;
     }
     finalError = error || validationErrors.join(" | ") || status;
     if (attemptNumber === 1) {
-      if (response?.content) messages.push({ role: "assistant", content: response.content });
-      messages.push({
+      if (response?.content) messages.push({ role: "assistant", content: response.provider_raw_response ?? response.content });
+      messages.push(provider.repair_message?.({ error, validationErrors, record }) ?? {
         role: "user",
         content: JSON.stringify({
           instruction:
@@ -254,6 +262,10 @@ export async function runLibrarianV01({
     return { run_id: runId, status: "failed", attempts: trace.attempts.length, error: finalError };
   }
 
+  const reviewReason = [
+    "A librarian candidate created immutable revisions; review before publication.",
+    ...acceptedCompilerActions,
+  ].join(" ");
   try {
     const identityPlan = planCandidateIdentity(catalog, acceptedCandidate, observation, {
       librarian_run_id: runId,
@@ -278,7 +290,7 @@ export async function runLibrarianV01({
       runId,
       ingested.product_revision_id,
       JSON.stringify(opportunityRevisionIds),
-      "A librarian candidate created immutable revisions; review before publication.",
+      reviewReason,
       finishedAt,
     );
     state.prepare(`
@@ -310,6 +322,7 @@ export async function runLibrarianV01({
       resolved_model: resolvedModel,
       review_id: reviewId,
       ingested,
+      compiler_actions: acceptedCompilerActions,
     };
   } catch (ingestionError) {
     const finishedAt = new Date().toISOString();

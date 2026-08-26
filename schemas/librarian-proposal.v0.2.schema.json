@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brokie.dev/schemas/librarian-proposal.v0.2.schema.json",
+  "title": "Brokie simplified Librarian proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "capability_ids", "offer"],
+  "properties": {
+    "description": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "capability_ids": {
+      "type": "array",
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{1,63}$"
+      }
+    },
+    "offer": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/offer" }
+      ]
+    }
+  },
+  "$defs": {
+    "quantity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["normalized_unit"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0 },
+        "comparator": {
+          "enum": ["exact", "at_least", "at_most", "up_to", "more_than", "less_than", "approximately", "unlimited", "unknown"]
+        },
+        "source_unit": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "normalized_unit": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" }
+      }
+    },
+    "cadence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interval", "unit"],
+      "properties": {
+        "interval": { "type": "integer", "minimum": 1 },
+        "unit": { "enum": ["minute", "hour", "day", "week", "month", "year"] }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "enum": ["minute", "hour", "day", "week", "month", "year"] }
+      }
+    },
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "comparator": { "enum": ["exact", "up_to", "at_least", "approximately"] }
+      }
+    },
+    "percentage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+        "comparator": { "enum": ["exact", "up_to", "at_least", "approximately"] }
+      }
+    },
+    "entitlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "label"],
+      "properties": {
+        "kind": {
+          "enum": ["no_cost_access", "included_usage", "included_resource", "included_capacity", "included_feature", "monetary_credit", "percentage_discount", "fixed_discount", "waived_fee", "trial_access", "grant"]
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "quantity": { "$ref": "#/$defs/quantity" },
+        "cadence": { "$ref": "#/$defs/cadence" },
+        "duration": { "$ref": "#/$defs/duration" },
+        "monetary_value": { "$ref": "#/$defs/money" },
+        "maximum_value": { "$ref": "#/$defs/money" },
+        "percentage_value": { "$ref": "#/$defs/percentage" },
+        "cost_scope": {
+          "enum": ["platform_fee", "subscription_fee", "software_license", "provider_usage", "infrastructure", "usage", "unknown", "not_applicable"]
+        }
+      }
+    },
+    "booleanCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "required"],
+      "properties": {
+        "kind": { "enum": ["account", "login", "credit_card", "application", "approval", "installation", "repository", "build_step"] },
+        "required": { "type": "boolean" }
+      }
+    },
+    "audienceCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audiences", "source_label", "verification_required"],
+      "properties": {
+        "audiences": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["startup", "student", "individual", "indie_developer", "small_team", "open_source_project", "nonprofit", "academic", "other"] }
+        },
+        "source_label": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "verification_required": { "type": ["boolean", "null"] }
+      }
+    },
+    "offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "entitlements"],
+      "properties": {
+        "availability": { "enum": ["public", "eligibility_gated", "application_required", "invite_only", "unknown"] },
+        "entitlements": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/entitlement" }
+        },
+        "boolean_conditions": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/booleanCondition" }
+        },
+        "audience_conditions": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/audienceCondition" }
+        }
+      }
+    }
+  }
+}
