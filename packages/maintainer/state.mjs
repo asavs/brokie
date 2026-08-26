@@ -90,6 +90,21 @@ export function openState(statePath) {
     CREATE INDEX IF NOT EXISTS librarian_runs_status_idx ON librarian_runs(status, started_at);
     CREATE INDEX IF NOT EXISTS revision_review_queue_status_idx
       ON revision_review_queue(status, created_at);
+    CREATE TABLE IF NOT EXISTS librarian_packet_queue (
+      packet_id TEXT PRIMARY KEY,
+      scout_run_id TEXT NOT NULL,
+      observed_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued'
+        CHECK(status IN ('queued','running','review_required','failed')),
+      enqueue_sequence INTEGER NOT NULL UNIQUE,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT,
+      finished_at TEXT,
+      librarian_run_id TEXT,
+      error TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS librarian_packet_queue_status_idx
+      ON librarian_packet_queue(status, enqueue_sequence);
   `);
   ensureColumn(
     db,
