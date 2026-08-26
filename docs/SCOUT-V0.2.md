@@ -40,6 +40,38 @@ Packet identity is a hash of the subject-local evidence document only: request, 
 
 Provider/model names, global trace fingerprints, selection order, companion subjects, invalid actions, global budget configuration/counters, timings, and run IDs remain in the ledger and map to packet IDs there. They do not participate in packet identity. Identical validated subject evidence must retain one packet ID across irrelevant grouping, ordering, route, and run differences.
 
+## External model boundary
+
+Scout core does not adapt itself to a particular free model. The provider boundary has
+two named external failures:
+
+- `external_model_unavailable`: the selected provider did not return a usable response;
+- `external_model_protocol_error`: the response was not exactly one valid permitted
+  action or failed deterministic packet validation.
+
+Either failure ends the active subject's model work immediately. When listing evidence
+already exists, Scout emits a packet whose topics are `blocked`, records the exact
+failure and validation detail in the ledger, and continues to the next bounded subject.
+Before subject selection, the run fails without fabricating packets. Scout does not
+retry, unwrap Markdown, search prose for JSON, move values between fields, split mixed
+source findings, invent missing comparisons, reinterpret conflicts, or normalize an
+unsupported answer into a different answer.
+
+Provider retry policy and provider-specific adaptation are explicit TODOs outside
+Scout core. The retained `derive-packet-v02` command remains an explicit offline tool
+for the historical DB Designer evaluation; the live runner never invokes it silently.
+
+## Complexity budget
+
+The corrective Scout source is linted with ESLint's classic cyclomatic-complexity rule:
+
+- maximum cyclomatic complexity: 12 per function;
+- maximum block depth: 3;
+- maximum function length: 80 nonblank, noncomment lines.
+
+`npm run lint` is part of `npm test`. New Scout v0.2 code must be decomposed rather
+than suppressed or added to an exception list.
+
 ## Librarian handoff
 
 The v0.2 adapter returns a structured bundle containing packet ID, request, subject, acquisitions, authority relationships, selected excerpts, findings, conflicts, outcomes, and unresolved questions. A transitional `record` projection contains only the collection listing and selected short findings—not whole raw pages—and carries the structured bundle into the Librarian prompt.
