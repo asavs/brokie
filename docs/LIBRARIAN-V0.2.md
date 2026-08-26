@@ -42,6 +42,8 @@ Brokie:
 - expands explicit thousand/million/billion magnitude units;
 - fills empty condition arrays and harmless cost-scope unknowns;
 - removes unknown capability IDs;
+- withholds a small set of high-risk capabilities when the listing lacks their defining evidence;
+- prevents cadence words from becoming quantity source units;
 - withholds an offer when no controlled capability survives;
 - compiles into the existing v0.1 catalog candidate contract;
 - validates, persists, and sends successful candidates to review without publishing them.
@@ -64,6 +66,11 @@ The retained ignored state is:
 `C:\Users\asas\Projects\brokie\main\var\pipeline-url-final2`
 
 The current queue contains 1,291 unprocessed packets and eight review-required results. The live samples deliberately stopped there.
+
+The later ten-listing, sixteen-job multi-route evaluation is recorded in
+[`evaluations/LIBRARIAN-V0.2-TEN-2026-08-26.md`](evaluations/LIBRARIAN-V0.2-TEN-2026-08-26.md).
+It produced two clean jobs, three safe deferrals, nine candidates needing semantic
+revision, and two bounded provider failures. Bulk processing remains paused.
 
 Observed route behavior:
 
