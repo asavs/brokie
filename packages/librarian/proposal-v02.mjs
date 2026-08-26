@@ -18,6 +18,15 @@ const comparatorAliases = new Map([
   ["gt", "more_than"], [">", "more_than"], ["approx", "approximately"],
 ]);
 const magnitudeUnits = new Map([["k", 1_000], ["thousand", 1_000], ["m", 1_000_000], ["million", 1_000_000], ["b", 1_000_000_000], ["billion", 1_000_000_000]]);
+const capabilityEvidence = new Map([
+  ["agent_infrastructure", [/\bagents?\b/i, /\b(backends?|infrastructure)\b/i]],
+  ["agent_tool_integration", [/\bagents?\b/i, /\b(connect|integration|tools?)\b/i]],
+  ["ai_observability", [/\b(ai|llm)\b/i, /\b(observability|monitoring|tracing|traces?)\b/i]],
+  ["code_generation", [/\b(code generation|generate code|coding assistant)\b/i]],
+  ["model_api", [/\bapi\b/i, /\b(model|inference)\b/i]],
+  ["research_assistance", [/\bresearch\b/i]],
+  ["virtual_machine", [/\b(virtual machine|vm)\b/i]],
+]);
 
 function support() {
   return { basis: "inferred", evidence_ids: ["ev_listing"] };
@@ -43,6 +52,15 @@ function normalizeComparator(value, location, actions) {
   return normalized;
 }
 
+function normalizeQuantitySourceUnit(entitlement, index, actions) {
+  const quantity = entitlement.quantity;
+  if (!quantity?.source_unit || !entitlement.cadence) return;
+  const sourceUnit = quantity.source_unit.trim().toLowerCase();
+  if (sourceUnit !== entitlement.cadence.unit || sourceUnit === quantity.normalized_unit) return;
+  quantity.source_unit = quantity.normalized_unit.replaceAll("_", " ");
+  actions.push(`offer.entitlements.${index}.quantity.source_unit: replaced cadence unit ${sourceUnit}`);
+}
+
 function normalizeEntitlement(entitlement, index, actions) {
   for (const field of ["quantity", "monetary_value", "maximum_value", "percentage_value"]) {
     if (!entitlement[field]) continue;
@@ -58,6 +76,7 @@ function normalizeEntitlement(entitlement, index, actions) {
     entitlement.quantity.value *= magnitude;
     actions.push(`offer.entitlements.${index}.quantity.value: expanded ${entitlement.quantity.source_unit} magnitude`);
   }
+  normalizeQuantitySourceUnit(entitlement, index, actions);
 }
 
 function normalizeCapabilities(proposal, actions) {
@@ -192,12 +211,23 @@ function compileOpportunity(proposal) {
   };
 }
 
+function capabilitiesSupportedByListing(capabilities, listing, actions) {
+  return capabilities.filter((capability) => {
+    const requirements = capabilityEvidence.get(capability) ?? [];
+    const supported = requirements.every((pattern) => pattern.test(listing));
+    if (!supported) actions.push(`capability_ids: omitted ${capability} because the listing lacks defining evidence`);
+    return supported;
+  });
+}
+
 export function compileProposalV02(proposal, record, observation) {
   const listing = record.scout_material_bundle?.collection?.text;
   if (!listing || !observation.source_text.includes(listing)) throw new Error("simplified Librarian requires an exact Scout collection listing");
+  const actions = [];
+  const compiledProposal = { ...proposal, capability_ids: capabilitiesSupportedByListing(proposal.capability_ids, listing, actions) };
   const link = record.source_url && listing.includes(record.source_url) ? [{ role: "source", url: record.source_url, support: { basis: "explicit", evidence_ids: ["ev_listing"] } }] : [];
-  const opportunity = compileOpportunity(proposal);
-  const actions = proposal.offer && !opportunity ? ["offer omitted because no controlled capability was supported"] : [];
+  const opportunity = compileOpportunity(compiledProposal);
+  if (proposal.offer && !opportunity) actions.push("offer omitted because no controlled capability was supported");
   return {
     candidate: {
       contract_version: "0.1.0",
@@ -211,7 +241,7 @@ export function compileProposalV02(proposal, record, observation) {
         description: proposal.description ? { text: proposal.description, support: support() } : null,
         organization_roles: [],
         links: link,
-        facets: proposal.capability_ids.map((concept_id) => ({ namespace: "capability", concept_id, support: support() })),
+        facets: compiledProposal.capability_ids.map((concept_id) => ({ namespace: "capability", concept_id, support: support() })),
         claimed_outcomes: [],
       },
       opportunities: opportunity ? [opportunity] : [],

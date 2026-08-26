@@ -4,7 +4,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { prepareSourceObservation } from "../packages/catalog/identity-plan.mjs";
 import { createCatalogStore } from "../packages/catalog/store.mjs";
-import { parseAndValidateProposalV02 } from "../packages/librarian/proposal-v02.mjs";
+import { compileProposalV02, parseAndValidateProposalV02 } from "../packages/librarian/proposal-v02.mjs";
 import { runLibrarianV02 } from "../packages/librarian/run-v02-core.mjs";
 import { openState } from "../packages/maintainer/state.mjs";
 
@@ -111,6 +111,43 @@ const magnitude = parseAndValidateProposalV02(JSON.stringify({
 }));
 assert.equal(magnitude.proposal.offer.entitlements[0].quantity.value, 1_000_000);
 assert.ok(magnitude.actions.some((action) => action.includes("expanded million magnitude")));
+const cadenceSourceUnit = parseAndValidateProposalV02(JSON.stringify({
+  description: null,
+  capability_ids: ["model_inference"],
+  offer: {
+    availability: "public",
+    entitlements: [{
+      kind: "included_usage", label: "5 requests per minute",
+      quantity: { value: 5, source_unit: "minute", normalized_unit: "request" },
+      cadence: { interval: 1, unit: "minute" },
+    }],
+  },
+}));
+assert.equal(cadenceSourceUnit.proposal.offer.entitlements[0].quantity.source_unit, "request");
+assert.ok(cadenceSourceUnit.actions.some((action) => action.includes("replaced cadence unit")));
+
+const genericMonitoringListing = "[Example](https://example.test) - Cloud metrics, alarms, logs, and one million requests.";
+const genericMonitoringRecord = {
+  ...record,
+  raw_text: genericMonitoringListing,
+  scout_material_bundle: { collection: { text: genericMonitoringListing }, pages: [] },
+};
+const genericMonitoringObservation = prepareSourceObservation(genericMonitoringRecord, "2026-08-26T01:00:00.000Z");
+const guarded = compileProposalV02({
+  description: "Cloud monitoring service.",
+  capability_ids: ["ai_observability", "agent_infrastructure"],
+  offer: valid.offer,
+}, genericMonitoringRecord, genericMonitoringObservation);
+assert.deepEqual(guarded.candidate.product.facets, []);
+assert.deepEqual(guarded.candidate.opportunities, []);
+assert.ok(guarded.actions.some((action) => action.includes("omitted ai_observability")));
+assert.ok(guarded.actions.some((action) => action.includes("omitted agent_infrastructure")));
+
+const aiListing = "[Example](https://example.test) - AI observability for tracing LLM model calls.";
+const aiRecord = { ...record, raw_text: aiListing, scout_material_bundle: { collection: { text: aiListing }, pages: [] } };
+const aiObservation = prepareSourceObservation(aiRecord, "2026-08-26T02:00:00.000Z");
+const supported = compileProposalV02({ description: "AI observability service.", capability_ids: ["ai_observability"], offer: valid.offer }, aiRecord, aiObservation);
+assert.equal(supported.candidate.product.facets[0].concept_id, "ai_observability");
 
 catalog.close();
 state.close();
