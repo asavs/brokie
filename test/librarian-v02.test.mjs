@@ -4,6 +4,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { prepareSourceObservation } from "../packages/catalog/identity-plan.mjs";
 import { createCatalogStore } from "../packages/catalog/store.mjs";
+import { validateCandidateDocument } from "../packages/catalog/validate-candidate.mjs";
 import { compileProposalV02, parseAndValidateProposalV02 } from "../packages/librarian/proposal-v02.mjs";
 import { runLibrarianV02 } from "../packages/librarian/run-v02-core.mjs";
 import { openState } from "../packages/maintainer/state.mjs";
@@ -67,7 +68,7 @@ assert.ok(!JSON.stringify(requests[0]).includes("output_schema"));
 assert.ok(requests[1].at(-1).content.includes("allowed values"));
 
 const run = state.prepare("SELECT * FROM librarian_runs").get();
-assert.equal(run.prompt_version, "librarian-v0.2");
+assert.equal(run.prompt_version, "librarian-v0.2.1");
 assert.equal(run.input_tokens, 200);
 assert.equal(run.output_tokens, 40);
 const attempts = state.prepare("SELECT * FROM librarian_attempts ORDER BY attempt_number").all();
@@ -126,7 +127,7 @@ const cadenceSourceUnit = parseAndValidateProposalV02(JSON.stringify({
 assert.equal(cadenceSourceUnit.proposal.offer.entitlements[0].quantity.source_unit, "request");
 assert.ok(cadenceSourceUnit.actions.some((action) => action.includes("replaced cadence unit")));
 
-const genericMonitoringListing = "[Example](https://example.test) - Cloud metrics, alarms, logs, and one million requests.";
+const genericMonitoringListing = "[Example](https://example.test) - Cloud metrics, alarms, logs, and one million API requests.";
 const genericMonitoringRecord = {
   ...record,
   raw_text: genericMonitoringListing,
@@ -135,19 +136,59 @@ const genericMonitoringRecord = {
 const genericMonitoringObservation = prepareSourceObservation(genericMonitoringRecord, "2026-08-26T01:00:00.000Z");
 const guarded = compileProposalV02({
   description: "Cloud monitoring service.",
-  capability_ids: ["ai_observability", "agent_infrastructure"],
+  capability_ids: ["ai_observability", "agent_infrastructure", "heartbeat_monitoring", "generic_service_api"],
   offer: valid.offer,
 }, genericMonitoringRecord, genericMonitoringObservation);
 assert.deepEqual(guarded.candidate.product.facets, []);
 assert.deepEqual(guarded.candidate.opportunities, []);
 assert.ok(guarded.actions.some((action) => action.includes("omitted ai_observability")));
 assert.ok(guarded.actions.some((action) => action.includes("omitted agent_infrastructure")));
+assert.ok(guarded.actions.some((action) => action.includes("omitted heartbeat_monitoring")));
+assert.ok(guarded.actions.some((action) => action.includes("omitted generic_service_api")));
 
 const aiListing = "[Example](https://example.test) - AI observability for tracing LLM model calls.";
 const aiRecord = { ...record, raw_text: aiListing, scout_material_bundle: { collection: { text: aiListing }, pages: [] } };
 const aiObservation = prepareSourceObservation(aiRecord, "2026-08-26T02:00:00.000Z");
 const supported = compileProposalV02({ description: "AI observability service.", capability_ids: ["ai_observability"], offer: valid.offer }, aiRecord, aiObservation);
 assert.equal(supported.candidate.product.facets[0].concept_id, "ai_observability");
+
+const richerListing = "[Example](https://example.test) - AI observability with 10,000 spans, one project, 7-day retention, an account, no API key, and conditional Phone verification.";
+const richerRecord = { ...record, raw_text: richerListing, scout_material_bundle: { collection: { text: richerListing }, pages: [] } };
+const richerObservation = prepareSourceObservation(richerRecord, "2026-08-26T03:00:00.000Z");
+const richerProposal = parseAndValidateProposalV02(JSON.stringify({
+  description: "AI observability service.",
+  capability_ids: ["ai_observability"],
+  offer: {
+    availability: "public",
+    entitlements: [
+      { kind: "included_usage", label: "10,000 spans", quantity: { value: 10000, normalized_unit: "span" } },
+      { kind: "included_resource", label: "one project", quantity: { value: 1, normalized_unit: "project" } },
+    ],
+    constraints: [
+      { kind: "retention", label: "7-day retention", quantity: { value: 7, normalized_unit: "day" } },
+      { kind: "maximum_quantity", label: "one project maximum", quantity: { value: 1, normalized_unit: "project" }, target_entitlement: 1 },
+    ],
+    boolean_conditions: [{ kind: "account", required: true }],
+    credential_conditions: [{ credential_type: "api_key", required: false }],
+    other_conditions: [{ normalized_key: "phone_verification", state: "conditional", source_value: "Phone verification", target_entitlement: 0 }],
+    audience_conditions: [],
+  },
+}));
+const richer = compileProposalV02(richerProposal.proposal, richerRecord, richerObservation);
+assert.equal(richer.candidate.opportunities[0].constraints[0].kind, "retention");
+assert.equal(richer.candidate.opportunities[0].constraints[1].target_key, "ent_2");
+assert.equal(richer.candidate.opportunities[0].conditions[1].family, "external_credential");
+assert.equal(richer.candidate.opportunities[0].conditions[2].normalized_key, "phone_verification");
+assert.deepEqual(validateCandidateDocument({ source_text: richerListing, candidate: richer.candidate }), []);
+assert.throws(() => parseAndValidateProposalV02(JSON.stringify({
+  description: null,
+  capability_ids: ["ai_observability"],
+  offer: {
+    availability: "public",
+    entitlements: [{ kind: "included_usage", label: "one span", quantity: { value: 1, normalized_unit: "span" } }],
+    constraints: [{ kind: "retention", label: "retention", quantity: { value: 7, normalized_unit: "day" }, target_entitlement: 3 }],
+  },
+})), /target_entitlement: out of range/);
 
 catalog.close();
 state.close();

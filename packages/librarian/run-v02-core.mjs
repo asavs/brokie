@@ -3,7 +3,7 @@ import path from "node:path";
 import { runLibrarianV01 } from "./run-v0.1-core.mjs";
 import { compileProposalV02, parseAndValidateProposalV02, requestPayloadV02 } from "./proposal-v02.mjs";
 
-const promptVersion = "librarian-v0.2";
+const promptVersion = "librarian-v0.2.1";
 const systemPrompt = fs.readFileSync(path.join(import.meta.dirname, "prompts", `${promptVersion}.txt`), "utf8");
 
 function initialMessages(record) {

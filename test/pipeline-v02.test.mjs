@@ -93,7 +93,7 @@ assert.ok(batch.results.every(({ attempts }) => attempts === 1));
 assert.deepEqual(batch.queue, { review_required: 2 });
 assert.equal(catalog.prepare("SELECT COUNT(*) AS count FROM source_snapshots").get().count, 2);
 assert.equal(state.prepare("SELECT COUNT(*) AS count FROM revision_review_queue").get().count, 2);
-assert.equal(state.prepare("SELECT COUNT(*) AS count FROM librarian_runs WHERE prompt_version='librarian-v0.2'").get().count, 2);
+assert.equal(state.prepare("SELECT COUNT(*) AS count FROM librarian_runs WHERE prompt_version='librarian-v0.2.1'").get().count, 2);
 assert.ok(modelRequests.every((messages) => JSON.stringify(messages).length < 6000));
 assert.ok(modelRequests.every((messages) => !JSON.stringify(messages).includes("output_schema")));
 const attempt = state.prepare("SELECT raw_response, parsed_candidate_json FROM librarian_attempts ORDER BY run_id LIMIT 1").get();

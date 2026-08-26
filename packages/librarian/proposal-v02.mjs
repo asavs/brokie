@@ -4,7 +4,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { vocabulary } from "../catalog/validate-candidate.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const schema = JSON.parse(fs.readFileSync(path.join(root, "schemas", "librarian-proposal.v0.2.schema.json"), "utf8"));
+const schema = JSON.parse(fs.readFileSync(path.join(root, "schemas", "librarian-proposal.v0.2.1.schema.json"), "utf8"));
 const validateSchema = new Ajv2020({ allErrors: true, strict: true }).compile(schema);
 const capabilityIds = new Set(vocabulary.facet_namespaces.capability);
 const normalizedUnits = new Set(vocabulary.normalized_units);
@@ -23,6 +23,8 @@ const capabilityEvidence = new Map([
   ["agent_tool_integration", [/\bagents?\b/i, /\b(connect|integration|tools?)\b/i]],
   ["ai_observability", [/\b(ai|llm)\b/i, /\b(observability|monitoring|tracing|traces?)\b/i]],
   ["code_generation", [/\b(code generation|generate code|coding assistant)\b/i]],
+  ["generic_service_api", [/\bapi\b(?!\s+requests?\b)/i]],
+  ["heartbeat_monitoring", [/\b(heartbeat|uptime)\b/i]],
   ["model_api", [/\bapi\b/i, /\b(model|inference)\b/i]],
   ["research_assistance", [/\bresearch\b/i]],
   ["virtual_machine", [/\b(virtual machine|vm)\b/i]],
@@ -52,31 +54,35 @@ function normalizeComparator(value, location, actions) {
   return normalized;
 }
 
-function normalizeQuantitySourceUnit(entitlement, index, actions) {
-  const quantity = entitlement.quantity;
-  if (!quantity?.source_unit || !entitlement.cadence) return;
+function normalizeQuantitySourceUnit(item, location, actions) {
+  const quantity = item.quantity;
+  if (!quantity?.source_unit || !item.cadence) return;
   const sourceUnit = quantity.source_unit.trim().toLowerCase();
-  if (sourceUnit !== entitlement.cadence.unit || sourceUnit === quantity.normalized_unit) return;
+  if (sourceUnit !== item.cadence.unit || sourceUnit === quantity.normalized_unit) return;
   quantity.source_unit = quantity.normalized_unit.replaceAll("_", " ");
-  actions.push(`offer.entitlements.${index}.quantity.source_unit: replaced cadence unit ${sourceUnit}`);
+  actions.push(`${location}.quantity.source_unit: replaced cadence unit ${sourceUnit}`);
 }
 
-function normalizeEntitlement(entitlement, index, actions) {
+function normalizeMagnitude(item, location, actions) {
+  const magnitude = magnitudeUnits.get(item.quantity?.source_unit?.trim().toLowerCase());
+  if (!magnitude || item.quantity.value === undefined) return;
+  item.quantity.value *= magnitude;
+  actions.push(`${location}.quantity.value: expanded ${item.quantity.source_unit} magnitude`);
+}
+
+function normalizeMeasuredItem(entitlement, index, actions, collection = "entitlements") {
+  const location = `offer.${collection}.${index}`;
   for (const field of ["quantity", "monetary_value", "maximum_value", "percentage_value"]) {
     if (!entitlement[field]) continue;
     const defaultComparator = entitlement[field].value === undefined && field === "quantity" ? "unknown" : "exact";
-    entitlement[field].comparator = normalizeComparator(entitlement[field].comparator ?? defaultComparator, `offer.entitlements.${index}.${field}.comparator`, actions);
+    entitlement[field].comparator = normalizeComparator(entitlement[field].comparator ?? defaultComparator, `${location}.${field}.comparator`, actions);
   }
   if (entitlement.quantity && !normalizedUnits.has(entitlement.quantity.normalized_unit)) {
-    actions.push(`offer.entitlements.${index}.quantity.normalized_unit: replaced unknown unit with other`);
+    actions.push(`${location}.quantity.normalized_unit: replaced unknown unit with other`);
     entitlement.quantity.normalized_unit = "other";
   }
-  const magnitude = magnitudeUnits.get(entitlement.quantity?.source_unit?.trim().toLowerCase());
-  if (magnitude && entitlement.quantity.value !== undefined) {
-    entitlement.quantity.value *= magnitude;
-    actions.push(`offer.entitlements.${index}.quantity.value: expanded ${entitlement.quantity.source_unit} magnitude`);
-  }
-  normalizeQuantitySourceUnit(entitlement, index, actions);
+  normalizeMagnitude(entitlement, location, actions);
+  normalizeQuantitySourceUnit(entitlement, location, actions);
 }
 
 function normalizeCapabilities(proposal, actions) {
@@ -85,14 +91,22 @@ function normalizeCapabilities(proposal, actions) {
   for (const id of proposed.filter((id) => !capabilityIds.has(id))) actions.push(`capability_ids: removed unknown ${id}`);
 }
 
+function normalizeOfferCollections(offer, actions) {
+  offer.boolean_conditions ??= [];
+  offer.credential_conditions ??= [];
+  offer.other_conditions ??= [];
+  offer.audience_conditions ??= [];
+  offer.constraints ??= [];
+  (offer.entitlements ?? []).forEach((item, index) => normalizeMeasuredItem(item, index, actions));
+  offer.constraints.forEach((item, index) => normalizeMeasuredItem(item, index, actions, "constraints"));
+}
+
 function normalizeProposal(raw) {
   const proposal = structuredClone(raw), actions = [];
   if (!proposal || typeof proposal !== "object" || Array.isArray(proposal)) return { proposal, actions };
   normalizeCapabilities(proposal, actions);
   if (!proposal?.offer || typeof proposal.offer !== "object") return { proposal, actions };
-  proposal.offer.boolean_conditions ??= [];
-  proposal.offer.audience_conditions ??= [];
-  (proposal.offer.entitlements ?? []).forEach((entitlement, index) => normalizeEntitlement(entitlement, index, actions));
+  normalizeOfferCollections(proposal.offer, actions);
   return { proposal, actions };
 }
 
@@ -131,14 +145,36 @@ function entitlementErrors(entitlement, index) {
   ];
 }
 
+function targetErrors(records, entitlementCount, collection) {
+  const errors = [];
+  records.forEach((record, index) => {
+    if (record.target_entitlement === undefined || record.target_entitlement === null) return;
+    if (record.target_entitlement >= entitlementCount) errors.push(`offer.${collection}.${index}.target_entitlement: out of range`);
+  });
+  return errors;
+}
+
+function constraintErrors(constraint, index) {
+  const location = `offer.constraints.${index}`;
+  const errors = quantityErrors(constraint.quantity, `${location}.quantity`);
+  if (constraint.kind === "other" && !constraint.other_kind) errors.push(`${location}: other requires other_kind`);
+  if (constraint.kind !== "other" && constraint.other_kind) errors.push(`${location}: other_kind only belongs to other`);
+  return errors;
+}
+
 function semanticErrors(proposal) {
   const errors = [];
   if (!proposal.offer) return errors;
-  proposal.offer.entitlements.forEach((entitlement, index) => errors.push(...entitlementErrors(entitlement, index)));
-  const hasAudience = proposal.offer.audience_conditions.length > 0;
-  const needsApplication = proposal.offer.boolean_conditions.some(({ kind, required }) => kind === "application" && required);
-  if (proposal.offer.availability === "eligibility_gated" && !hasAudience) errors.push("eligibility_gated offer requires an audience condition");
-  if (proposal.offer.availability === "application_required" && !needsApplication) errors.push("application_required offer requires application=true");
+  const offer = proposal.offer;
+  offer.entitlements.forEach((entitlement, index) => errors.push(...entitlementErrors(entitlement, index)));
+  offer.constraints.forEach((constraint, index) => errors.push(...constraintErrors(constraint, index)));
+  for (const collection of ["constraints", "boolean_conditions", "credential_conditions", "other_conditions"]) {
+    errors.push(...targetErrors(offer[collection], offer.entitlements.length, collection));
+  }
+  const hasAudience = offer.audience_conditions.length > 0;
+  const needsApplication = offer.boolean_conditions.some(({ kind, required }) => kind === "application" && required);
+  if (offer.availability === "eligibility_gated" && !hasAudience) errors.push("eligibility_gated offer requires an audience condition");
+  if (offer.availability === "application_required" && !needsApplication) errors.push("application_required offer requires application=true");
   return errors;
 }
 
@@ -178,22 +214,63 @@ function compileEntitlement(entitlement, index) {
   return compiled;
 }
 
+function targetKey(record) {
+  return Number.isInteger(record.target_entitlement) ? `ent_${record.target_entitlement + 1}` : "opportunity";
+}
+
+function compileConstraints(offer) {
+  return (offer.constraints ?? []).map((constraint, index) => {
+    const compiled = {
+      key: `constraint_${index + 1}`,
+      kind: constraint.kind,
+      label: constraint.label,
+      target_key: targetKey(constraint),
+      support: support(),
+    };
+    for (const field of ["other_kind", "quantity"]) if (constraint[field]) compiled[field] = constraint[field];
+    if (constraint.cadence) compiled.cadence = { ...constraint.cadence, alignment: "unknown" };
+    if (compiled.quantity) compiled.quantity = {
+      ...compiled.quantity,
+      source_unit: compiled.quantity.source_unit ?? compiled.quantity.normalized_unit.replaceAll("_", " "),
+    };
+    return compiled;
+  });
+}
+
 function compileConditions(offer) {
-  const booleanConditions = offer.boolean_conditions.map((condition, index) => ({
+  const booleanConditions = (offer.boolean_conditions ?? []).map((condition, index) => ({
     key: `cond_boolean_${index + 1}`,
     family: "boolean_requirement",
-    ...condition,
-    target_key: "opportunity",
+    kind: condition.kind,
+    required: condition.required,
+    target_key: targetKey(condition),
     support: support(),
   }));
-  const audienceConditions = offer.audience_conditions.map((condition, index) => ({
+  const credentialConditions = (offer.credential_conditions ?? []).map((condition, index) => ({
+    key: `cond_credential_${index + 1}`,
+    family: "external_credential",
+    credential_type: condition.credential_type,
+    required: condition.required,
+    target_key: targetKey(condition),
+    support: support(),
+  }));
+  const otherConditions = (offer.other_conditions ?? []).map((condition, index) => ({
+    key: `cond_other_${index + 1}`,
+    family: "other",
+    normalized_key: condition.normalized_key,
+    state: condition.state,
+    source_value: condition.source_value,
+    target_key: targetKey(condition),
+    support: support(),
+  }));
+  const audienceConditions = (offer.audience_conditions ?? []).map((condition, index) => ({
     key: `cond_audience_${index + 1}`,
     family: "audience",
     ...condition,
     target_key: "opportunity",
     support: support(),
   }));
-  return [...booleanConditions, ...audienceConditions];
+  return [...booleanConditions, ...credentialConditions, ...otherConditions, ...audienceConditions];
 }
 
 function compileOpportunity(proposal) {
@@ -204,7 +281,7 @@ function compileOpportunity(proposal) {
     plan_label: null,
     availability: { value: proposal.offer.availability, support: support() },
     entitlements: proposal.offer.entitlements.map(compileEntitlement),
-    constraints: [],
+    constraints: compileConstraints(proposal.offer),
     conditions: compileConditions(proposal.offer),
     ambiguities: [],
     links: [],
